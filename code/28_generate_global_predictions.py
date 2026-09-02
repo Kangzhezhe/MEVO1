@@ -32,7 +32,14 @@ def run(config: dict[str, Any]) -> Path:
         if configured
         else resolve_path(config["paths"]["editor_output_dir"]) / "global_idpo" / "final_adapter"
     )
-    prediction_mode = str(config.get("sft_data", {}).get("supervision_mode", "output_only"))
+    configured_prediction_mode = str(
+        config.get("sft_data", {}).get("supervision_mode", "output_only")
+    )
+    # 多任务 SFT 的推理只调用 TITLE 子任务。将内部解析模式设为纯文本，
+    # 同时给 Prompt 加上训练时使用的 [TITLE] 前缀；RATIONALE 不需要在
+    # 推理阶段生成，也不应成为最终标题的必经中间步骤。
+    multitask_title = configured_prediction_mode == "multitask_title_rationale"
+    prediction_mode = "plain_output_only" if multitask_title else configured_prediction_mode
     if prediction_mode not in {"output_only", "plain_output_only"}:
         prediction_mode = "output_only"
     local.setdefault("sft_data", {})["supervision_mode"] = prediction_mode
@@ -48,14 +55,15 @@ def run(config: dict[str, Any]) -> Path:
         if not parents:
             continue
         parent = parents[0]
-        prompts.append(build_configured_editor_prompt(
+        prompt = build_configured_editor_prompt(
             config,
             row, "mutation", parent, None,
             int(config["generation"].get("maximum_history_records", 8)),
             supervision_mode=prediction_mode,
             history_input_max_chars=int(config["simple_conditional_trace"].get("history_input_max_chars", 500)),
             history_output_max_chars=int(config["simple_conditional_trace"].get("history_output_max_chars", 300)),
-        ))
+        )
+        prompts.append(("[TITLE]\n" + prompt) if multitask_title else prompt)
         metadata.append((row, parent))
     raw = editor.generate_many(prompts)
     output = []

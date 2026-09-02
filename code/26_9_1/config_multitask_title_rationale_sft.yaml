@@ -1,0 +1,51 @@
+# Distilling Step-by-Step 风格的多任务 Editor SFT 配置。
+# Parent 构建和 Teacher rationale 构建由 build_multitask_rationale_sft.py 完成；
+# 本配置用于后续调用现有 06_train_editor_lora.py 训练共享 LoRA。
+base: /home/liux/kk/MEVO_global_cot/config_global_llama2_7b_visgpt_prime_matched.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_multitask_title_rationale_sft
+
+paths:
+  sft_dir: /data/liux/MEVO_global_cot/dataset/editor_sets/multitask_title_rationale_sft
+  editor_output_dir: /data/liux/MEVO_global_cot/result/multitask_title_rationale_sft/editor
+  # 100 用户/608 Query 的评估产物单独存放，避免覆盖 Base、Trace 和 IDPO 结果。
+  prediction_dir: /data/liux/MEVO_global_cot/result/multitask_title_rationale_sft/predictions
+  reports_dir: /data/liux/MEVO_global_cot/result/multitask_title_rationale_sft/reports
+
+sft_data:
+  # 数据行已经带有 [TITLE]/[RATIONALE] 前缀；训练器只读取 prompt/output_text。
+  prompt_protocol: base_text
+  supervision_mode: multitask_title_rationale
+  validation_fraction: 0.05
+  maximum_history_records: 8
+
+rationale_sft:
+  concurrency: 2
+  schema_retries: 2
+  # sample_weight=1.0 的 Title 与 sample_weight=0.1 的 Rationale 混合训练。
+  rationale_loss_weight: 0.1
+
+training:
+  max_length: 2048
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  epochs: 2
+  max_steps: -1
+  learning_rate: 0.0002
+  warmup_ratio: 0.05
+  weight_decay: 0.0
+  logging_steps: 10
+  save_strategy: epoch
+  save_total_limit: 2
+  cuda_memory_fraction: 0.90
+
+evaluation:
+  # 与 Base/Trace 正式结果完全相同：Per-Pcs test100，100 用户、608 Query。
+  user_limit: 0
+  expected_users: 100
+  expected_queries: 608
+  prediction_batch_size: 1
+  max_new_tokens: 64

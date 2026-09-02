@@ -166,6 +166,11 @@ def build_examples(rows: list[dict[str, Any]], config: dict[str, Any]) -> tuple[
             "example_id": f"{row.get('id')}:base_parent:direct_gold",
             "sample_id": str(row.get("id", "")),
             "user_id": str(row.get("user_id", "")),
+            # 保留原始字段，便于后续构造 RATIONALE 辅助任务；这些字段不
+            # 会拼入 prompt 以外的训练目标，也不会包含额外 Gold 泄漏。
+            "source_text": str(row.get("source_text", "")),
+            "profile": list(row.get("profile", [])),
+            "target": gold,
             "operation_type": "mutation",
             "parent_a_id": parent_candidate["candidate_id"],
             "parent_b_id": None,
@@ -236,6 +241,9 @@ def main() -> None:
     examples, analyses = build_examples(rows, config)
     output = resolve_path(args.output)
     output.mkdir(parents=True, exist_ok=True)
+    # 供后续 RATIONALE 辅助任务复用真实 Parent；该文件只保存原始行，
+    # 不包含 Teacher 标注，也不改变 Direct SFT 的训练目标。
+    write_jsonl(output / "01_base_parent_records.jsonl", rows)
     write_jsonl(output / "all_sft.jsonl", examples)
     write_jsonl(output / "train_sft.jsonl", [x for x in examples if x["split"] == "train"])
     write_jsonl(output / "validation_sft.jsonl", [x for x in examples if x["split"] == "validation"])
