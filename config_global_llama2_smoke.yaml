@@ -1,0 +1,122 @@
+base: config_global.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_smoke
+
+pipeline:
+  run_gpu: true
+  wait_for_gpu: false
+  gpu_memory_threshold_mib: 1000
+
+splits:
+  train:
+    processed_split: global_llama2_smoke_train
+    limit: 20
+  validation:
+    processed_split: global_llama2_smoke_validation
+    limit: 5
+  test:
+    processed_split: global_llama2_smoke_test
+    limit: 2
+  adaptation_train:
+    processed_split: global_llama2_smoke_adaptation_train
+
+paths:
+  sft_dir: dataset/editor_sets/global_llama2_7b_smoke_sft
+  conditional_trace_dir: dataset/editor_sets/global_llama2_7b_smoke_traces
+  idpo_dir: dataset/idpo/global_llama2_7b_smoke
+
+teacher:
+  provider: mock
+  model: mock
+  cache_dir: dataset/cache/global-llama2-smoke
+
+generation:
+  task_seeds: 1
+  profile_seeds: 1
+  concurrency: 1
+  schema_retries: 1
+  checkpoint_every: 5
+  maximum_history_records: 8
+  resume_existing: true
+
+simple_conditional_trace:
+  history_top_k: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+  concurrency: 1
+  schema_retries: 1
+  checkpoint_every: 5
+
+sft_data:
+  supervision_mode: simple_conditional_trace
+  validation_fraction: 0.20
+  maximum_history_records: 8
+  maximum_examples_per_query: 2
+
+model:
+  name: Llama-2-7b-ms-hf
+  path: /data/liux/PriME/models/Llama-2-7b-ms-hf
+
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+training:
+  seed: 42
+  max_length: 1024
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+  epochs: 1
+  max_steps: 2
+  batch_size: 1
+  gradient_accumulation_steps: 2
+  learning_rate: 0.0002
+  warmup_ratio: 0.0
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  logging_steps: 1
+  save_total_limit: 1
+  cuda_memory_fraction: 0.90
+
+inference:
+  max_new_tokens: 64
+  do_sample: true
+  temperature: 0.8
+  top_p: 0.95
+  batch_size: 1
+  fallback_on_invalid_json: true
+
+global_idpo:
+  rollout_samples: 4
+  mutation_parents: 1
+  include_teacher_crossover: true
+  crossover_count: 1
+  minimum_valid_responses: 2
+  minimum_reward_margin: 0.0
+  reward_metric: rouge_l
+  trace_weight: 0.2
+  output_weight: 1.0
+  max_length: 512
+  beta: 0.1
+  epochs: 1
+  learning_rate: 0.000005
+  weight_decay: 0.0
+  gradient_accumulation_steps: 1
+  batch_size: 1
+  reference_batch_size: 1
+  max_grad_norm: 1.0
+  checkpoint_every: 2
+  resume_existing: true
+  user_limit: 1
+  profiles_per_user: all
+  minimum_profile_count: 1
+  compact_profile_top_k: 2
+  max_adaptation_queries: 2
+  dpo_include_teacher_crossover: true
+
+evaluation:
+  prediction_batch_size: 1
+  max_new_tokens: 64

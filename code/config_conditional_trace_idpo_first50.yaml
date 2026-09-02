@@ -1,0 +1,76 @@
+base: config_conditional_trace_full.yaml
+
+# 与此前 RTX PRO 6000 first-50 实验保持相同用户范围和全历史 LOO 口径，
+# 但在本机 30GB GPU 上使用较小 micro batch。
+experiment:
+  name: perpcs_conditional_preference_idpo_first50_v1
+
+paths:
+  idpo_dir: dataset/idpo/perpcs_conditional_preference_idpo_first50_v1
+
+teacher:
+  # 本阶段每个 LOO Query 只生成1个 Parent；VisGPT 偶尔直接
+  # 返回单行标题。允许 Seed 解析器接收修复后的字符串，
+  # 后续仍执行非空、单行、长度和去重校验。
+  allow_repaired_json_scalar: true
+
+splits:
+  adaptation_test:
+    processed_split: perpcs_conditional_preference_idpo_first50_adaptation_test
+
+profile_augmentation:
+  profiles_per_user: all
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+
+generation:
+  task_seeds: 1
+  profile_seeds: 0
+  concurrency: 4
+  reuse_processed_splits: {}
+
+idpo:
+  round: 0
+  source_split: test
+  user_limit: 50
+  pseudo_queries_per_user: 0
+  maximum_history_records: 8
+  rollout_operations: [mutation]
+  rollout_mutation_parents: 1
+  rollout_samples: 8
+  rollout_do_sample: true
+  rollout_temperature: 0.8
+  rollout_top_p: 0.95
+  # 每个Prompt恰好采样8个response，一次forward完成全部采样。
+  rollout_batch_size: 8
+  rollout_query_batch_size: 1
+  minimum_valid_responses: 4
+  checkpoint_every: 20
+  resume_existing: true
+  mock_editor: false
+  mock_training: false
+  policy_adapter_root: ""
+  reference_adapter_path: ""
+  preference_source: loo_gold
+  gold_reward_metric: rouge_l
+  minimum_reward_margin: 0.03
+  beta: 0.1
+  epochs: 1
+  learning_rate: 5.0e-6
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  batch_size: 2
+  gradient_accumulation_steps: 2
+  minimum_pairs_per_user: 10
+  max_length: 1024
+  length_normalized_logp: false
+  seed: 42
+  device: cuda
+
+inference:
+  max_new_tokens: 96
+  batch_size: 8
+
+user_adaptation:
+  encoding_batch_size: 32
+  batch_size: 64

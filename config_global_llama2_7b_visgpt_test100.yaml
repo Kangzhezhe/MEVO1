@@ -1,0 +1,141 @@
+base: config_global.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_test100
+
+pipeline:
+  run_gpu: true
+  wait_for_gpu: false
+  gpu_memory_threshold_mib: 1000
+
+splits:
+  train:
+    partition: base
+    processed_split: global_llama2_7b_visgpt_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: global_llama2_7b_visgpt_validation
+    limit: 0
+  test:
+    partition: test
+    # Per-Pcs 官方 test100：100 个用户，共 608 条 Query。
+    processed_split: global_llama2_7b_visgpt_test100_full
+    limit: 0
+  adaptation_train:
+    processed_split: global_llama2_7b_visgpt_adaptation_train
+
+paths:
+  candidate_root: dataset/candidate_sets
+  sft_dir: dataset/editor_sets/global_llama2_7b_visgpt_sft
+  conditional_trace_dir: dataset/editor_sets/global_llama2_7b_visgpt_traces
+  idpo_dir: dataset/idpo/global_llama2_7b_visgpt_idpo
+
+teacher:
+  provider: openai_compatible
+  model: gpt-4o
+  base_url: https://zwenai.cn:15500/api/v1
+  api_key_env: VIS_API_KEY
+  verify_ssl: false
+  trust_env: false
+  temperature: 0.0
+  timeout_seconds: 180
+  max_retries: 3
+  json_parse_retries: 5
+  max_tokens: 2400
+  cache_dir: dataset/cache/global-llama2-7b-visgpt-test100
+
+generation:
+  task_seeds: 2
+  profile_seeds: 2
+  maximum_history_records: 8
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 20
+  resume_existing: true
+  reuse_processed_splits: {}
+
+simple_conditional_trace:
+  history_top_k: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+  minimum_evidence: 1
+  maximum_evidence: 2
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 20
+
+sft_data:
+  supervision_mode: simple_conditional_trace
+  validation_fraction: 0.05
+  maximum_history_records: 8
+  maximum_examples_per_query: 4
+
+model:
+  name: Llama-2-7b-ms-hf
+  path: /data/liux/PriME/models/Llama-2-7b-ms-hf
+
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+training:
+  seed: 42
+  max_length: 1024
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+  epochs: 2
+  max_steps: -1
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  learning_rate: 0.0002
+  warmup_ratio: 0.05
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  logging_steps: 10
+  save_total_limit: 2
+  cuda_memory_fraction: 0.90
+
+inference:
+  max_new_tokens: 128
+  do_sample: true
+  temperature: 0.8
+  top_p: 0.95
+  batch_size: 1
+  fallback_on_invalid_json: true
+
+global_idpo:
+  rollout_samples: 4
+  mutation_parents: 1
+  include_teacher_crossover: true
+  crossover_count: 1
+  minimum_valid_responses: 2
+  minimum_reward_margin: 0.03
+  reward_metric: rouge_l
+  trace_weight: 0.2
+  output_weight: 1.0
+  max_length: 1024
+  beta: 0.1
+  epochs: 1
+  learning_rate: 0.000005
+  weight_decay: 0.0
+  gradient_accumulation_steps: 8
+  batch_size: 1
+  reference_batch_size: 1
+  max_grad_norm: 1.0
+  checkpoint_every: 20
+  resume_existing: true
+  user_limit: 0
+  profiles_per_user: all
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+  dpo_include_teacher_crossover: true
+
+evaluation:
+  prediction_batch_size: 1
+  max_new_tokens: 128
+  user_limit: 0
+  expected_users: 100
+  expected_queries: 608

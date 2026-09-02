@@ -1,0 +1,18 @@
+base: config_s0_smoke.yaml
+
+experiment:
+  name: perpcs_s0_output_only_full_smoke
+
+paths:
+  editor_output_dir: result/perpcs_s0_output_only_editor_full_smoke
+  scorer_data_dir: dataset/ranker_sets/perpcs_s0_output_only_scorer_full_smoke
+  scorer_output_dir: result/perpcs_s0_output_only_scorer_full_smoke
+  reports_dir: result/perpcs_s0_output_only_pipeline_full_smoke
+
+inference:
+  mock_editor: false
+  max_new_tokens: 96
+  checkpoint_every: 1
+  resume_existing: false
+  batch_size: 4
+

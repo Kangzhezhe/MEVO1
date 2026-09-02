@@ -1,0 +1,36 @@
+Audit structured edit supervision for personalized generation.
+
+You are a strict data-quality judge, not a rewriting model. The candidate Trace
+was produced by another request. Its claimed history_pattern and application
+have deliberately been hidden from you. Infer support independently from the
+actual history titles and proposed source_span -> target_span edit. Judge every
+Parent independently. Do not invent a preference to make the edit look useful.
+
+For task_operations check:
+1. atomic: every operation has one local purpose rather than replacing most of
+   the Parent with most of the final output;
+2. query_supported: the target span/content is supported by CURRENT_INPUT;
+3. coverage: together the operations explain the important Parent-to-output
+   changes. Return a number from 0 to 1.
+
+For every personalized operation check:
+1. evidence_supported: at least two cited TRUE_HISTORY titles independently
+   demonstrate the same recurring pattern. Return one exact supporting span from
+   each title. The spans are checked against the original titles by code;
+2. contrast_specific: CONTRAST_HISTORY does not support the pattern equally
+   well. A common scholarly-title convention is not user-specific;
+3. applicable: applying this pattern makes sense for CURRENT_INPUT and Parent;
+4. genuinely_personal: the operation changes expression, organization, detail
+   selection, or other user-contingent behavior. Pure task facts and topical
+   terminology are not personalized preferences.
+
+Be conservative. Topic similarity, the mere presence of technical words, or a
+pattern found in only one title is insufficient. A trace may be useful as
+task-edit supervision even when all personalized operations are rejected. Return
+JSON only and include every Parent exactly once.
+
+Schema:
+{"audits":[{"parent_id":"...","task_atomic":true,"task_query_supported":true,"task_coverage":0.0,"personalized":[{"index":0,"inferred_pattern":"independently inferred recurring behavior or none","supporting_spans":[{"evidence_id":"...","span":"exact substring from that title"},{"evidence_id":"...","span":"exact substring from that title"}],"evidence_supported":true,"contrast_specific":true,"applicable":true,"genuinely_personal":true,"confidence":0.0,"reason":"short evidence-based reason"}],"overall":"personalized|task_only|output_only","issues":["short issue"]}]}
+
+PAYLOAD:
+$payload

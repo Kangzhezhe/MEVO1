@@ -1,0 +1,28 @@
+base: config_idpo_gold_test_first50.yaml
+
+experiment:
+  name: perpcs_rag_pag_qwen32b_test_first50_v1
+
+# 两个基线严格使用与 IDPO 相同的按 user_id 排序的前 50 个 Test 用户。
+baseline:
+  source_split: test
+  user_limit: 50
+  rag_top_k: 8
+  concurrency: 32
+  schema_retries: 2
+  failed_job_rounds: 10
+  checkpoint_every: 10
+  output_dir: result/perpcs_rag_pag_qwen32b_test_first50_v1
+
+teacher:
+  provider: openai_compatible
+  model: qwen3-32b
+  base_url: https://ws-7px5fnixs5fanewk.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+  api_key_env: QWEN_API_KEY
+  temperature: 0.0
+  timeout_seconds: 180
+  max_retries: 3
+  json_parse_retries: 3
+  max_tokens: 2000
+  cache_dir: dataset/cache/perpcs-rag-pag-qwen32b-test-first50-v1
+

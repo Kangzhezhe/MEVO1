@@ -1,0 +1,26 @@
+base: config_idpo_gold_test_all.yaml
+
+experiment:
+  name: perpcs_idpo_gold_test_all_smoke_v1
+
+paths:
+  idpo_dir: /tmp/mevo_idpo_gold_test_all_smoke_v1
+
+splits:
+  adaptation_test:
+    processed_split: perpcs_idpo_gold_test_all_smoke_adaptation_test
+
+teacher:
+  provider: mock
+  model: mock-test-all
+  cache_dir: /tmp/mevo_idpo_gold_test_all_smoke_teacher_v1
+
+idpo:
+  user_limit: 2
+  # all 表示不再对每用户的 LOO Query 截断。
+  pseudo_queries_per_user: 0
+  mock_editor: true
+  mock_training: true
+  minimum_reward_margin: 0.0
+  minimum_pairs_per_user: 2
+  resume_existing: false

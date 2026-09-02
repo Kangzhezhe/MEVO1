@@ -1,0 +1,46 @@
+base: config_s1_full.yaml
+
+experiment:
+  name: perpcs_s1_free_trace_llama2_7b_full_v1
+
+# 与 Qwen 全量实验使用相同的 Per-Pcs 划分，但所有中间产物独立保存，
+# 避免覆盖 Qwen 生成的候选池和 Ranker 数据。
+splits:
+  train:
+    processed_split: perpcs_s1_llama2_7b_full_train
+  validation:
+    processed_split: perpcs_s1_llama2_7b_full_validation
+  test:
+    processed_split: perpcs_s1_llama2_7b_full_test
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s1_free_trace_llama2_7b_full_v1
+  editor_output_dir: result/perpcs_s1_free_trace_llama2_7b_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_s1_free_trace_llama2_7b_full_v1
+  scorer_output_dir: result/perpcs_s1_free_trace_llama2_7b_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_s1_free_trace_llama2_7b_user_scorer_full_v1
+  reports_dir: result/perpcs_s1_free_trace_llama2_7b_pipeline_full_v1
+
+# 复用 Qwen 实验已经完成的 target-blind Parent 和 Gold-aware Teacher 缓存，
+# 模型对比只改变 Editor backbone。
+teacher:
+  cache_dir: dataset/cache/perpcs-s1-free-trace-full-v1
+
+generation:
+  reuse_processed_splits:
+    train: perpcs_s1_full_train
+    validation: perpcs_s1_full_validation
+    test: perpcs_s1_full_test
+
+model:
+  name: Llama-2-7B
+  path: /data/liux/PriME/models/Llama-2-7b-ms-hf
+
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 16
+  cuda_memory_fraction: 0.92
+
+inference:
+  batch_size: 1
+

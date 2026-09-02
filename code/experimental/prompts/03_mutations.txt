@@ -1,0 +1,12 @@
+For every parent, make one conservative personalized revision or keep it.
+Use only CURRENT_INPUT, RETRIEVED_HISTORY, and the parent. The profile signal
+must cite visible history IDs and describe a user-specific observation relevant
+to this exact edit in one concise sentence of at most 30 words. Generic advice
+is invalid. Never use or infer a reference
+answer or metric. If no supported improvement exists, decision must be keep and
+output must exactly equal the parent. Return every parent exactly once as JSON:
+
+{"mutations":[{"parent_id":"...","decision":"revise|keep","profile_signal":{"evidence_ids":["..."],"observation":"..."},"edit_action":"...","output":"..."}]}
+
+PAYLOAD:
+$payload

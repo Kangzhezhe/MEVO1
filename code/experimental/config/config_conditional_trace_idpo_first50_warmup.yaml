@@ -1,0 +1,14 @@
+base: config_conditional_trace_idpo_first50_trace.yaml
+
+experiment:
+  name: perpcs_conditional_trace_warmup_idpo_first50_v1
+
+paths:
+  idpo_dir: dataset/idpo/perpcs_conditional_trace_warmup_idpo_first50_v1
+
+idpo:
+  # Warm-up后的共享LoRA同时作为第0轮 rollout policy 和冻结reference。
+  reference_adapter_path: result/perpcs_conditional_trace_warmup_v1/final_adapter
+
+model:
+  adapter_path: result/perpcs_conditional_trace_warmup_v1/final_adapter

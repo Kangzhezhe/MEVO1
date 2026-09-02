@@ -1,0 +1,78 @@
+# 纯 Gold 直接 SFT 对照：输入完全复用 Base，输出只监督 Gold 标题。
+# 不执行 Trace、Mutation、Crossover 或 IDPO。
+base: config_global_llama2_7b_visgpt_prime_matched.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_direct_gold_sft_base_protocol
+
+splits:
+  train:
+    partition: base
+    processed_split: global_llama2_7b_visgpt_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: global_llama2_7b_visgpt_validation
+    limit: 0
+  test:
+    partition: test
+    processed_split: global_llama2_7b_visgpt_test100_full
+    limit: 0
+
+paths:
+  sft_dir: dataset/editor_sets/global_llama2_7b_visgpt_direct_gold_sft
+  conditional_trace_dir: dataset/editor_sets/global_llama2_7b_visgpt_direct_gold_traces_unused
+  idpo_dir: dataset/idpo/global_llama2_7b_visgpt_direct_gold_unused
+
+sft_data:
+  # 与 30_generate_base_predictions.py 完全相同的纯文本 Prompt。
+  prompt_protocol: base_text
+  supervision_mode: plain_output_only
+  # 每个 Query 仅保留 candidates[0]，即 Base 推理时使用的 Parent。
+  one_parent_per_query: true
+  validation_fraction: 0.05
+  maximum_history_records: 8
+  maximum_examples_per_query: 1
+
+training:
+  max_length: 2048
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  epochs: 2
+  max_steps: -1
+  learning_rate: 0.0002
+  warmup_ratio: 0.05
+  weight_decay: 0.0
+  logging_steps: 10
+  save_strategy: epoch
+  save_total_limit: 2
+  cuda_memory_fraction: 0.90
+
+generation:
+  # 现有 target-blind seeds 已经生成，运行时只复用缓存，不重复调用 Teacher。
+  task_seeds: 2
+  profile_seeds: 2
+  maximum_history_records: 8
+  concurrency: 1
+  schema_retries: 2
+  checkpoint_every: 20
+  resume_existing: true
+
+model:
+  name: Llama-2-7b-ms-hf
+  path: /data/liux/PriME/models/Llama-2-7b-ms-hf
+
+lora:
+  rank: 8
+  alpha: 16
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+evaluation:
+  prediction_batch_size: 1
+  max_new_tokens: 64
+  user_limit: 0
+  expected_users: 100
+  expected_queries: 608

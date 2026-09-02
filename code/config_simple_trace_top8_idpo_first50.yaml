@@ -1,0 +1,52 @@
+base: config_conditional_trace_idpo_first50.yaml
+
+experiment:
+  name: perpcs_simple_trace_top8_idpo_first50_v1
+
+paths:
+  conditional_trace_dir: dataset/editor_sets/perpcs_simple_trace_top8_traces_full_v1
+  sft_dir: dataset/editor_sets/perpcs_simple_trace_top8_sft_full_v1
+  editor_output_dir: result/perpcs_simple_trace_top8_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_simple_trace_top8_full_v1
+  scorer_output_dir: result/perpcs_simple_trace_top8_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_simple_trace_top8_user_scorer_full_v1
+  reports_dir: result/perpcs_simple_trace_top8_pipeline_full_v1
+  idpo_dir: dataset/idpo/perpcs_simple_trace_top8_idpo_first50_v1
+
+splits:
+  adaptation_test:
+    processed_split: perpcs_simple_trace_top8_idpo_first50_adaptation_test
+
+sft_data:
+  supervision_mode: simple_conditional_trace
+  maximum_history_records: 8
+
+simple_conditional_trace:
+  history_top_k: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+
+generation:
+  maximum_history_records: 8
+  task_seeds: 1
+  profile_seeds: 0
+  reuse_processed_splits: {}
+
+evolution:
+  maximum_history_records: 8
+
+idpo:
+  rollout_response_mode: simple_conditional_trace
+  trace_fallback_to_output_only: true
+  trace_maximum_history_records: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+  response_logp_weighting: trace_output_optional
+  trace_logp_weight: 0.2
+  output_logp_weight: 1.0
+  max_length: 2048
+  rollout_batch_size: 4
+
+inference:
+  max_new_tokens: 192
+  batch_size: 4

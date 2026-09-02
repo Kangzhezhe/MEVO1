@@ -1,0 +1,29 @@
+base: config_idpo_gold_test_first50.yaml
+
+# RTX PRO 6000 96GB：10 个 Query 组成跨 Query batch，即每次 80 条生成序列。
+# batch=9 峰值约 76.7GB；提高到 10 以把显存利用率提升到约 84--86GB。
+experiment:
+  name: perpcs_idpo_gold_test_first50_pro6000_v1
+
+idpo:
+  # 96GB AutoDL GPU：48 条序列的跨 Query batch，显存实测后再调整。
+  rollout_query_batch_size: 10
+  # Stage 20 per-user DPO：由原 micro-batch=2/accumulation=2 提升到
+  # micro-batch=18。有效 batch 扩大 4.5 倍，学习率按线性规则同步扩大。
+  batch_size: 18
+  gradient_accumulation_steps: 1
+  learning_rate: 2.25e-5
+
+model:
+  path: /root/autodl-tmp/MEVO/models/Qwen2.5-1.5B-Instruct
+
+# Stage 21 per-user Editor 推理。只改变一次 forward 中处理的 Prompt 数，
+# 不改变解码参数、候选内容定义或评估口径。
+inference:
+  batch_size: 32
+
+# Stage 22 per-user Ranker：主要 GPU 开销来自冻结 DeBERTa 的特征编码；
+# Linear Head 在缓存后的 769 维特征上训练，增大其 batch 主要减少循环开销。
+user_adaptation:
+  encoding_batch_size: 128
+  batch_size: 256

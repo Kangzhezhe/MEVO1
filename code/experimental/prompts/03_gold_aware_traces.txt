@@ -1,0 +1,16 @@
+You are creating supervised editing traces for a personalized generation model.
+For every Parent, explain the smallest correction that transforms it toward the
+REFERENCE_OUTPUT while remaining faithful to CURRENT_INPUT. Use RETRIEVED_HISTORY
+only for a user-specific preference that is actually applicable to this edit.
+
+Return reasoning summaries, not hidden chain-of-thought. Do not generate or copy
+the final output. Do not mention "gold", "reference", ROUGE, score, or metric in
+task_correction, profile_signal, or edit_action. Cite only visible history IDs.
+If history adds no reliable preference, use an empty evidence_ids list and state
+that no profile-specific change is supported. Return every Parent exactly once.
+
+JSON schema:
+{"traces":[{"parent_id":"...","task_correction":"one concise task-content correction","profile_signal":{"evidence_ids":["..."],"observation":"one concise applicable preference or no-supported-signal statement"},"edit_action":"one concrete edit from Parent toward the desired output"}]}
+
+PAYLOAD:
+$payload

@@ -1,0 +1,11 @@
+base: config_conditional_trace_warmup.yaml
+
+experiment:
+  name: perpcs_conditional_trace_warmup_smoke
+
+paths:
+  editor_output_dir: result/perpcs_conditional_trace_warmup_smoke
+
+training:
+  gradient_accumulation_steps: 1
+  cuda_memory_fraction: 0.85

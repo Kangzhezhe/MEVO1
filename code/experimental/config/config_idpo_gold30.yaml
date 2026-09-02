@@ -1,0 +1,66 @@
+base: config_s1_full.yaml
+
+experiment:
+  name: perpcs_idpo_gold30_m5_v1
+
+paths:
+  idpo_dir: dataset/idpo/perpcs_idpo_gold30_m5_v1
+
+# 与旧的 Linear Head 和 Teacher-Judge pilot 完全隔离。
+splits:
+  adaptation_validation:
+    processed_split: perpcs_idpo_gold30_m5_adaptation_validation
+  adaptation_test:
+    processed_split: perpcs_idpo_gold30_m5_adaptation_test
+
+# 每个真实用户随机选择5条历史做 Leave-One-Out。
+profile_augmentation:
+  profiles_per_user: 5
+  minimum_profile_count: 10
+
+# 快速验证只需要一个 target-blind Parent；避免额外 Profile Seed API 请求。
+generation:
+  task_seeds: 1
+  profile_seeds: 0
+  reuse_processed_splits: {}
+
+idpo:
+  round: 0
+  source_split: validation
+  user_limit: 30
+  pseudo_queries_per_user: 5
+  maximum_history_records: 8
+
+  # 每条 LOO 只对一个 Parent 做 Mutation，采样4条不同响应。
+  rollout_operations: [mutation]
+  rollout_mutation_parents: 1
+  rollout_samples: 4
+  rollout_do_sample: true
+  rollout_temperature: 0.8
+  rollout_top_p: 0.95
+  rollout_batch_size: 4
+  minimum_valid_responses: 2
+  checkpoint_every: 5
+  resume_existing: true
+  mock_editor: false
+  mock_training: false
+  policy_adapter_root: ""
+  reference_adapter_path: ""
+
+  # 不调用 Teacher Judge：Gold 仅在采样完成后决定 chosen/rejected。
+  preference_source: loo_gold
+  gold_reward_metric: rouge_l
+  minimum_reward_margin: 0.03
+
+  beta: 0.1
+  epochs: 1
+  learning_rate: 5.0e-6
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 4
+  minimum_pairs_per_user: 2
+  max_length: 1024
+  length_normalized_logp: false
+  seed: 42
+  device: cuda

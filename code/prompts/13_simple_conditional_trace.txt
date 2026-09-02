@@ -1,0 +1,31 @@
+Build compact Gold-aware SFT supervision for a personalized editor.
+
+The desired output is visible only because this is an offline training-data
+construction request. The Student will never receive it in its input.
+
+For every Parent, decide whether one or two records in RETRIEVED_HISTORY support
+a useful editing preference that applies to CURRENT_INPUT and helps explain how
+to revise that Parent toward DESIRED_OUTPUT.
+
+Rules:
+1. Return every Parent exactly once.
+2. evidence_ids may contain one or two visible history IDs. One strong record is
+   sufficient; do not force two records.
+3. edit_reason is one short sentence combining: what the selected history
+   suggests, and why that behavior applies to CURRENT_INPUT.
+4. edit_action is one short, concrete, Parent-specific revision instruction.
+5. If no visible history reliably supports a useful personalized edit, return
+   evidence_ids=[], edit_reason="", and edit_action="". Do not invent evidence.
+6. Do not use a fixed preference taxonomy. Do not treat topic overlap or generic
+   good-writing advice alone as a personalized preference.
+7. History cannot authorize factual content absent from CURRENT_INPUT.
+8. Do not quote the complete desired output in edit_reason or edit_action. Do
+   not mention gold, target, reference answer, score, metric, or ROUGE.
+9. Do not return the final output; code attaches DESIRED_OUTPUT exactly.
+10. Return compact JSON only.
+
+Schema:
+{"traces":[{"parent_id":"...","evidence_ids":["..."],"edit_reason":"...","edit_action":"..."}]}
+
+PAYLOAD:
+$payload

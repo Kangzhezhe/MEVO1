@@ -1,0 +1,39 @@
+base: config_idpo_gold_test_all.yaml
+
+experiment:
+  name: perpcs_idpo_gold_test_first50_v1
+
+# 复用全量任务已经生成的 checkpoint；Stage 10 会把适配源裁剪为排序后的前50个用户。
+paths:
+  idpo_dir: dataset/idpo/perpcs_idpo_gold_test_all_v1
+
+splits:
+  adaptation_test:
+    processed_split: perpcs_idpo_gold_test_all_adaptation_test
+
+idpo:
+  source_split: test
+  user_limit: 50
+  pseudo_queries_per_user: 0
+
+  # GPU阶段提高吞吐；有效DPO batch仍为4。
+  rollout_batch_size: 8
+  # 每个 Query 仍采样 8 个 response；租用 96GB 卡时可设为 4/8，
+  # 形成 32/64 条生成序列的跨 Query batch。
+  rollout_query_batch_size: 1
+  # 每个Prompt采样8个response，实际生成batch才能达到8；Gold scorer从中
+  # 选择最高/最低的一对。
+  rollout_samples: 8
+  minimum_valid_responses: 4
+  batch_size: 2
+  gradient_accumulation_steps: 2
+
+  minimum_pairs_per_user: 10
+  resume_existing: true
+
+inference:
+  batch_size: 8
+
+# Seed Parent 使用Qwen API；提高并发以尽快进入GPU阶段。所有请求均支持缓存恢复。
+generation:
+  concurrency: 8

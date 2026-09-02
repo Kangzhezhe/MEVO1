@@ -1,0 +1,156 @@
+experiment:
+  name: mevo_global_semistructured_cot_idpo_v1
+
+pipeline:
+  run_gpu: true
+  wait_for_gpu: false
+  gpu_memory_threshold_mib: 2000
+
+project:
+  seed: 42
+
+data:
+  source_format: perpcs_lamp5
+  perpcs_root: ../PriME/data/scholarly_title
+  drop_missing_profile_abstracts: true
+
+splits:
+  train:
+    partition: base
+    processed_split: global_cot_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: global_cot_validation
+    limit: 0
+  test:
+    partition: test
+    # Per-Pcs 标准 test100 是 100 个用户，而不是前 100 条 Query。
+    processed_split: global_cot_test100_full
+    limit: 0
+  adaptation_train:
+    processed_split: global_cot_adaptation_train
+
+paths:
+  candidate_root: dataset/candidate_sets
+  sft_dir: dataset/editor_sets/global_semistructured_cot_sft_v1
+  conditional_trace_dir: dataset/editor_sets/global_semistructured_cot_traces_v1
+  editor_output_dir: result/global_semistructured_cot_editor_sft_v1
+  idpo_dir: dataset/idpo/global_semistructured_cot_idpo_v1
+  prediction_dir: result/global_semistructured_cot_predictions_v1
+  reports_dir: result/global_semistructured_cot_reports_v1
+
+retrieval:
+  top_k: 8
+  k1: 1.5
+  b: 0.75
+
+teacher:
+  provider: openai_compatible
+  model: gpt-4o
+  base_url: https://zwenai.cn:15500/api/v1
+  api_key_env: VIS_API_KEY
+  verify_ssl: false
+  trust_env: false
+  temperature: 0.0
+  timeout_seconds: 180
+  max_retries: 3
+  json_parse_retries: 5
+  max_tokens: 2400
+  cache_dir: dataset/cache/global-semistructured-cot-v1
+
+generation:
+  task_seeds: 2
+  profile_seeds: 2
+  maximum_history_records: 8
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 20
+  resume_existing: true
+  reuse_processed_splits: {}
+
+simple_conditional_trace:
+  history_top_k: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+  minimum_evidence: 1
+  maximum_evidence: 2
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 20
+
+sft_data:
+  supervision_mode: simple_conditional_trace
+  validation_fraction: 0.05
+  maximum_history_records: 8
+  maximum_examples_per_query: 4
+
+model:
+  name: Qwen2.5-1.5B-Instruct
+  path: /data/liux/MEVO/models/Qwen2.5-1.5B-Instruct
+
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules: [q_proj, k_proj, v_proj, o_proj]
+
+training:
+  seed: 42
+  max_length: 2048
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+  epochs: 2
+  max_steps: -1
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  learning_rate: 0.0002
+  warmup_ratio: 0.05
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  logging_steps: 10
+  save_total_limit: 2
+  cuda_memory_fraction: 0.90
+
+inference:
+  max_new_tokens: 128
+  do_sample: true
+  temperature: 0.8
+  top_p: 0.95
+  batch_size: 8
+
+global_idpo:
+  rollout_samples: 8
+  mutation_parents: 1
+  include_teacher_crossover: true
+  crossover_count: 1
+  minimum_valid_responses: 4
+  minimum_reward_margin: 0.03
+  reward_metric: rouge_l
+  trace_weight: 0.2
+  output_weight: 1.0
+  # DPO 同时保留 policy/reference；1536 可覆盖绝大多数 pair，并避免
+  # 30GB 卡在双模型 forward 时因 vocab logits 峰值 OOM。
+  max_length: 1536
+  beta: 0.1
+  epochs: 1
+  learning_rate: 0.000005
+  weight_decay: 0.0
+  gradient_accumulation_steps: 8
+  batch_size: 1
+  max_grad_norm: 1.0
+  checkpoint_every: 20
+  resume_existing: true
+  user_limit: 0
+  profiles_per_user: all
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+  # Crossover 是进化候选的一部分，默认进入离线偏好选择。
+  dpo_include_teacher_crossover: true
+
+evaluation:
+  prediction_batch_size: 8
+  max_new_tokens: 128
+  user_limit: 0
+  expected_users: 100
+  expected_queries: 608

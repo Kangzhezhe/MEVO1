@@ -1,0 +1,27 @@
+Analyze query-relevant LOCAL profile signals from the retrieved input-output
+history. This is not a global or stable user profile.
+
+You can see CURRENT_INPUT, TOP8_HISTORY and target-blind PARENTS. You cannot see
+the desired output. Look for recurring input-to-output behavior along these
+dimensions only: content_focus, specificity, structure, compression,
+terminology, surface_style.
+
+Rules:
+1. Return at most two signals; an empty list is correct when evidence is weak.
+2. Every signal needs at least two different history records showing the same
+   input condition and output behavior.
+3. For each evidence record, output_span must be an exact non-empty substring of
+   that record's historical output. input_cue must describe the triggering input
+   condition rather than merely repeat a topic word.
+4. Explain why the signal is relevant to CURRENT_INPUT and list only Parents for
+   which it could plausibly help.
+5. Do not claim global/stable preference. Do not mention gold, desired output,
+   reference, score, metric, or ROUGE.
+6. Prefer content selection, structure and compression over punctuation trivia.
+7. Return JSON only.
+
+Schema:
+{"signals":[{"signal_id":"s1","dimension":"content_focus|specificity|structure|compression|terminology|surface_style","observation":"one concise local behavior","evidence":[{"id":"...","input_cue":"...","output_behavior":"...","output_span":"exact title substring"},{"id":"...","input_cue":"...","output_behavior":"...","output_span":"exact title substring"}],"query_relevance":"why useful for current input","applicable_parent_ids":["..."],"confidence":0.0}]}
+
+PAYLOAD:
+$payload

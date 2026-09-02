@@ -1,0 +1,63 @@
+base: config_global_llama2_7b_visgpt_prime_matched.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_plain_output_only_base_protocol
+
+pipeline:
+  run_gpu: true
+  wait_for_gpu: false
+  gpu_memory_threshold_mib: 1000
+
+paths:
+  sft_dir: dataset/editor_sets/global_llama2_7b_visgpt_plain_output_only_base_protocol_sft
+  conditional_trace_dir: dataset/editor_sets/global_llama2_7b_visgpt_plain_output_only_base_protocol_traces_unused
+  idpo_dir: dataset/idpo/global_llama2_7b_visgpt_plain_output_only_base_protocol
+
+sft_data:
+  supervision_mode: plain_output_only
+  # 训练 Prompt 与 Base/Trace 标准评估的纯文本 Prompt 完全相同；监督目标
+  # 仍然只有 Gold 标题，不包含 JSON 包装或 Trace 字段。
+  prompt_protocol: base_text
+  validation_fraction: 0.05
+  maximum_history_records: 8
+  maximum_examples_per_query: 4
+
+training:
+  # Base prompt 可能包含较长摘要和 Top-8 历史，使用同一输入截断上限。
+  max_length: 2048
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 16
+
+global_idpo:
+  source_split: train
+  rollout_response_mode: plain_output_only
+  # 仍为每个 Query 采样 8 个候选，但逐条/小批送入 GPU，避免长 Prompt
+  # 的 KV cache 峰值导致 Llama2-7B rollout OOM。
+  rollout_batch_size: 2
+  include_teacher_crossover: false
+  dpo_include_teacher_crossover: false
+  trace_weight: 0.0
+  output_weight: 1.0
+  max_length: 1024
+  rollout_samples: 8
+  minimum_valid_responses: 2
+  minimum_reward_margin: 0.03
+  reward_metric: rouge_l
+  epochs: 1
+  batch_size: 1
+  reference_batch_size: 1
+  resume_existing: true
+
+inference:
+  # 30_generate_base_predictions.py 固定使用 Base 的贪心解码和 64 新 token。
+  batch_size: 1
+  max_new_tokens: 64
+
+evaluation:
+  prediction_batch_size: 1
+  max_new_tokens: 64
+  user_limit: 0
+  expected_users: 100
+  expected_queries: 608

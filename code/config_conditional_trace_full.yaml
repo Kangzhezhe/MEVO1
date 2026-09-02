@@ -1,0 +1,88 @@
+base: config_s1_full.yaml
+
+# 2026-08-09：在此前 PRO 6000 实验的完整 Per-Pcs 阶段一数据上，
+# 只替换 SFT 的个性化 Trace 定义；数据划分、4 Parent、模型和训练轮数保持一致。
+experiment:
+  name: perpcs_conditional_preference_trace_full_v1
+
+pipeline:
+  run_gpu: true
+  run_user_adaptation: false
+  # 本机 GPU 当前有其他用户任务。Teacher 数据阶段先运行，SFT 开始前排队。
+  wait_for_gpu: true
+  # 允许与已占用约17.5GB的外部任务共享30GB GPU。本实验自身
+  # 通过 cuda_memory_fraction 限制在约11GB以内。
+  gpu_memory_threshold_mib: 19000
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_conditional_trace_full_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: perpcs_conditional_trace_full_validation
+    limit: 0
+  test:
+    partition: test
+    processed_split: perpcs_conditional_trace_full_test100
+    limit: 0
+
+paths:
+  conditional_trace_dir: dataset/editor_sets/perpcs_conditional_preference_traces_full_v1
+  sft_dir: dataset/editor_sets/perpcs_conditional_preference_sft_full_v1
+  editor_output_dir: result/perpcs_conditional_preference_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_conditional_preference_full_v1
+  scorer_output_dir: result/perpcs_conditional_preference_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_conditional_preference_user_scorer_full_v1
+  reports_dir: result/perpcs_conditional_preference_pipeline_full_v1
+
+teacher:
+  provider: openai_compatible
+  model: gpt-4o
+  base_url: https://zwenai.cn:15500/api/v1
+  api_key_env: VIS_API_KEY
+  verify_ssl: false
+  trust_env: false
+  temperature: 0.0
+  timeout_seconds: 180
+  max_retries: 3
+  json_parse_retries: 5
+  max_tokens: 3000
+  cache_dir: dataset/cache/perpcs-conditional-preference-full-visgpt-v1
+
+generation:
+  # 与 PRO 6000 路线共用相同的四个 target-blind Parent，以隔离 Trace 的影响；
+  # 新增的所有 Teacher Trace 请求均由上面的 VisGPT 完成。
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+  concurrency: 4
+
+sft_data:
+  supervision_mode: conditional_preference_trace
+  maximum_history_records: 4
+  maximum_examples_per_query: 4
+
+conditional_preference_trace:
+  history_top_k: 4
+  confidence_threshold: 0.7
+  concurrency: 4
+  checkpoint_every: 20
+
+# 30GB 本地卡的剩余显存模式：2048 token 下 micro batch=1、
+# 累积32，有效 batch 仍为32。
+training:
+  max_length: 2048
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 32
+  # 外部17GB任务结束后恢复大部分显存配额，供 IDPO batch提速。
+  cuda_memory_fraction: 0.85
+
+inference:
+  # Trace 是 SFT 辅助目标；正式生成只要求 {"output":"..."}。
+  max_new_tokens: 96
+  batch_size: 2

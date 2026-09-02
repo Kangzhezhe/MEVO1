@@ -1,0 +1,54 @@
+base: config_s0.yaml
+
+experiment:
+  name: perpcs_s1_free_trace_train300_v1
+
+pipeline:
+  run_user_adaptation: false
+  run_gpu: false
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_s1_train300
+    limit: 300
+  validation:
+    partition: reserve
+    processed_split: perpcs_s1_validation100
+    limit: 100
+  test:
+    partition: test
+    processed_split: perpcs_s1_test100
+    limit: 100
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s1_free_trace_train300_v1
+  editor_output_dir: result/perpcs_s1_free_trace_editor_train300_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_s1_free_trace_train300_v1
+  scorer_output_dir: result/perpcs_s1_free_trace_scorer_train300_v1
+  user_scorer_output_dir: result/perpcs_s1_free_trace_user_scorer_train300_v1
+  reports_dir: result/perpcs_s1_free_trace_pipeline_train300_v1
+
+teacher:
+  cache_dir: dataset/cache/perpcs-s1-free-trace-train300-v1
+
+generation:
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+
+sft_data:
+  supervision_mode: gold_aware_trace
+
+# S1 与 S0 的唯一区别应当是自由形式 Trace 也参与优化。
+# 输出标题保持主监督，Trace 只作为较弱的辅助监督，避免长解释压过 Gold。
+training:
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+
+gold_aware_sft:
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 10
+  resume_existing: true

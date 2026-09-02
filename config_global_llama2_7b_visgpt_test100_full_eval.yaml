@@ -1,0 +1,13 @@
+base: config_global_llama2_7b_visgpt_prime_matched.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_test100_full_eval
+
+splits:
+  test:
+    partition: test
+    processed_split: global_llama2_7b_visgpt_test100_full
+    limit: 0
+
+paths:
+  prediction_dir: result/20260828_221331_mevo_global_llama2_7b_visgpt_prime_matched/predictions/full_test100

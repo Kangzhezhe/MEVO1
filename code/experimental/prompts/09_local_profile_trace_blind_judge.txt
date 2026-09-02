@@ -1,0 +1,25 @@
+Blindly audit local-profile edit supervision. The generator's observation,
+query_relevance, parent_gap, expected_benefit and query_basis have been hidden.
+Infer support independently from CURRENT_INPUT, TOP8_HISTORY, PARENTS, the cited
+signal evidence IDs and the proposed local edits.
+
+For every signal decide:
+- evidence_supported: at least two cited history input-output records exhibit
+  the same conditional output behavior;
+- query_relevant: that behavior is applicable and potentially useful now.
+
+For every edit decide:
+- task_supported: for every edit, CURRENT_INPUT supports the target content and
+  change. History may choose how to express supported content, but cannot
+  introduce content unsupported by CURRENT_INPUT;
+- profile_consistent: for profile/task_and_profile edits, the edit is consistent
+  with the independently inferred cited signal; use null for task-only edits.
+
+Be conservative. Topic similarity alone is not an input-to-output behavior.
+Return each signal and Parent exactly once and JSON only.
+
+Schema:
+{"signal_audits":[{"signal_id":"...","inferred_observation":"independent concise behavior or none","evidence_supported":true,"query_relevant":true,"confidence":0.0,"reason":"..."}],"trace_audits":[{"parent_id":"...","changed_content_coverage":0.0,"edits":[{"index":0,"task_supported":true,"profile_consistent":null,"reason":"..."}]}]}
+
+PAYLOAD:
+$payload

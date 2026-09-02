@@ -1,0 +1,26 @@
+base: config_conditional_trace_full.yaml
+
+experiment:
+  name: perpcs_conditional_trace_warmup_v1
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_conditional_trace_warmup_v1
+  editor_output_dir: result/perpcs_conditional_trace_warmup_v1
+
+trace_warmup:
+  source_sft_dir: dataset/editor_sets/perpcs_conditional_preference_sft_full_v1
+  output_only_ratio: 1.0
+  seed: 42
+
+training:
+  # 从现有 Shared SFT LoRA 继续训练，仍然只更新同一组 LoRA 参数。
+  initial_adapter_path: result/perpcs_conditional_preference_editor_full_v1/final_adapter
+  epochs: 1
+  learning_rate: 2.0e-5
+  trace_loss_weight: 1.0
+  output_loss_weight: 1.0
+  max_length: 2048
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  cuda_memory_fraction: 0.85
+  save_total_limit: 1

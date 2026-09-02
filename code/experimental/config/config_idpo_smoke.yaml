@@ -1,0 +1,29 @@
+base: config_idpo_pilot.yaml
+
+experiment:
+  name: perpcs_per_user_idpo_smoke_v1
+
+paths:
+  idpo_dir: /tmp/mevo_idpo_smoke_v3
+
+splits:
+  adaptation_validation:
+    processed_split: perpcs_idpo_smoke_v3_adaptation_validation
+  adaptation_test:
+    processed_split: perpcs_idpo_smoke_v3_adaptation_test
+
+idpo:
+  user_limit: 2
+  pseudo_queries_per_user: 2
+  rollout_samples: 3
+  minimum_valid_responses: 2
+  judge_concurrency: 1
+  mock_editor: true
+  mock_training: true
+  minimum_pairs_per_user: 1
+  device: cpu
+
+teacher:
+  provider: mock
+  model: mock-idpo-judge
+  cache_dir: /tmp/mevo_idpo_smoke_teacher_v3

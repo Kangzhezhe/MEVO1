@@ -1,0 +1,65 @@
+base: config_s1_full.yaml
+
+experiment:
+  name: perpcs_idpo_gold_test_all_v1
+
+paths:
+  idpo_dir: dataset/idpo/perpcs_idpo_gold_test_all_v1
+
+splits:
+  adaptation_test:
+    processed_split: perpcs_idpo_gold_test_all_adaptation_test
+
+# 每个 test 用户的每一条有效历史都轮流作为一次 LOO Query/Gold。其余完整
+# 历史先参与 BM25，磁盘上只保留实际输入 Editor 的 Top-8。
+profile_augmentation:
+  profiles_per_user: all
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+
+generation:
+  task_seeds: 1
+  profile_seeds: 0
+  concurrency: 4
+  reuse_processed_splits: {}
+
+idpo:
+  round: 0
+  source_split: test
+  user_limit: 0
+  pseudo_queries_per_user: 0
+  maximum_history_records: 8
+  rollout_operations: [mutation]
+  rollout_mutation_parents: 1
+  rollout_samples: 4
+  rollout_do_sample: true
+  rollout_temperature: 0.8
+  rollout_top_p: 0.95
+  rollout_batch_size: 4
+  # 跨 Query batching 的 Query 数。保持 1 可兼容 30GB 显存；PRO 6000
+  # 可先提高到 4，再根据峰值显存测试 8。
+  rollout_query_batch_size: 1
+  minimum_valid_responses: 2
+  checkpoint_every: 20
+  resume_existing: true
+  mock_editor: false
+  mock_training: false
+  policy_adapter_root: ""
+  reference_adapter_path: ""
+
+  preference_source: loo_gold
+  gold_reward_metric: rouge_l
+  minimum_reward_margin: 0.03
+
+  beta: 0.1
+  epochs: 1
+  learning_rate: 5.0e-6
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 4
+  minimum_pairs_per_user: 10
+  max_length: 1024
+  length_normalized_logp: false
+  seed: 42
+  device: cuda

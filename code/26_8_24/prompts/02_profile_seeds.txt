@@ -1,0 +1,16 @@
+Follow TASK_INSTRUCTION and generate exactly $count distinct personalized final
+answers for the CURRENT_INPUT. Each answer must be a concise, single-line
+scholarly paper title (at most 30 words), not an abstract, summary, explanation,
+or sentence describing "this paper". Use RETRIEVED_HISTORY only as examples of
+the user's recurring output choices. Do not copy irrelevant historical content.
+Do not use or infer a reference answer or metric. Return JSON only:
+{"candidates":["...","..."]}
+
+TASK_INSTRUCTION:
+$instruction
+
+CURRENT_INPUT:
+$current_input
+
+RETRIEVED_HISTORY:
+$history

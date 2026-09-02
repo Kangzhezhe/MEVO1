@@ -1,0 +1,28 @@
+base: config_idpo_gold30.yaml
+
+experiment:
+  name: perpcs_idpo_gold_smoke_v1
+
+paths:
+  idpo_dir: /tmp/mevo_idpo_gold_smoke_v2
+
+splits:
+  adaptation_validation:
+    processed_split: perpcs_idpo_gold_smoke_v2_adaptation_validation
+  adaptation_test:
+    processed_split: perpcs_idpo_gold_smoke_v2_adaptation_test
+
+teacher:
+  provider: mock
+  model: mock-gold-smoke
+  cache_dir: /tmp/mevo_idpo_gold_smoke_teacher_v2
+
+idpo:
+  user_limit: 2
+  pseudo_queries_per_user: 5
+  mock_editor: true
+  mock_training: true
+  # 结构 smoke 允许等分响应形成确定性 Pair；正式配置仍使用0.03。
+  minimum_reward_margin: 0.0
+  minimum_pairs_per_user: 2
+  resume_existing: false

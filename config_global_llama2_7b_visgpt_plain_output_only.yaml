@@ -1,0 +1,35 @@
+base: config_global_llama2_7b_visgpt_prime_matched.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_plain_output_only
+
+paths:
+  sft_dir: dataset/editor_sets/global_llama2_7b_visgpt_plain_output_only_sft
+  conditional_trace_dir: dataset/editor_sets/global_llama2_7b_visgpt_plain_output_only_traces_unused
+  editor_output_dir: result/global_llama2_7b_visgpt_plain_output_only/editor
+  idpo_dir: dataset/idpo/global_llama2_7b_visgpt_plain_output_only
+  prediction_dir: result/global_llama2_7b_visgpt_plain_output_only/predictions
+  reports_dir: result/global_llama2_7b_visgpt_plain_output_only/reports
+
+sft_data:
+  supervision_mode: plain_output_only
+
+global_idpo:
+  rollout_response_mode: plain_output_only
+  include_teacher_crossover: false
+  dpo_include_teacher_crossover: false
+  trace_weight: 0.0
+  output_weight: 1.0
+
+training:
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+  save_strategy: steps
+  save_steps: 100
+
+evaluation:
+  prediction_batch_size: 8
+  max_new_tokens: 128
+  user_limit: 0
+  expected_users: 100
+  expected_queries: 608

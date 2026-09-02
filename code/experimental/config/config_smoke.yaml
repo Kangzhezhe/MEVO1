@@ -1,0 +1,54 @@
+base: config.yaml
+
+experiment:
+  name: perpcs_gold_aware_sft_smoke
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_factor_free_smoke_train
+    limit: 20
+  validation:
+    partition: reserve
+    processed_split: perpcs_factor_free_smoke_validation
+    limit: 3
+  test:
+    partition: test
+    processed_split: perpcs_factor_free_smoke_test
+    limit: 2
+  adaptation_validation:
+    processed_split: perpcs_factor_free_smoke_adaptation_validation
+  adaptation_test:
+    processed_split: perpcs_factor_free_smoke_adaptation_test
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_gold_aware_sft_smoke
+  editor_output_dir: result/perpcs_gold_aware_editor_smoke
+  scorer_data_dir: dataset/ranker_sets/perpcs_gold_aware_scorer_smoke
+  scorer_output_dir: result/perpcs_gold_aware_scorer_smoke
+  user_scorer_output_dir: result/perpcs_gold_aware_user_scorer_smoke
+  reports_dir: result/perpcs_gold_aware_pipeline_smoke
+
+teacher:
+  provider: mock
+  model: mock-gold-aware-trace
+  cache_dir: dataset/cache/perpcs-gold-aware-trace-smoke
+
+generation:
+  concurrency: 2
+
+evolution:
+  concurrency: 2
+
+gold_aware_sft:
+  concurrency: 2
+
+training:
+  max_steps: 1
+
+inference:
+  mock_editor: true
+
+profile_augmentation:
+  profiles_per_user: 2
+  minimum_profile_count: 5

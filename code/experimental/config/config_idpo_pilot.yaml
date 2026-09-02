@@ -1,0 +1,54 @@
+base: config_s1_full.yaml
+
+experiment:
+  name: perpcs_per_user_idpo_pilot_v1
+
+paths:
+  idpo_dir: dataset/idpo/perpcs_per_user_idpo_pilot_v1
+
+# IDPO 的 Leave-One-Out 中间数据与旧的 Linear Head 实验隔离，避免两个流程
+# 复用同一 candidate split 时互相覆盖。
+splits:
+  adaptation_validation:
+    processed_split: perpcs_idpo_pilot_adaptation_validation
+  adaptation_test:
+    processed_split: perpcs_idpo_pilot_adaptation_test
+
+profile_augmentation:
+  profiles_per_user: 10
+  minimum_profile_count: 10
+
+idpo:
+  round: 0
+  source_split: validation
+  user_limit: 30
+  pseudo_queries_per_user: 10
+  maximum_history_records: 8
+  rollout_samples: 4
+  rollout_do_sample: true
+  rollout_temperature: 0.8
+  rollout_top_p: 0.95
+  rollout_batch_size: 4
+  minimum_valid_responses: 2
+  checkpoint_every: 5
+  resume_existing: true
+  mock_editor: false
+  mock_training: false
+  policy_adapter_root: ""
+  reference_adapter_path: ""
+  judge_concurrency: 4
+  judge_retries: 2
+  minimum_confidence: 0.65
+  beta: 0.1
+  epochs: 1
+  learning_rate: 5.0e-6
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  batch_size: 1
+  gradient_accumulation_steps: 4
+  minimum_pairs_per_user: 4
+  max_length: 1024
+  # 标准 DPO 使用 response token log-probability 之和。
+  length_normalized_logp: false
+  seed: 42
+  device: cuda

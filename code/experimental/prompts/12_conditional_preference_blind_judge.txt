@@ -1,0 +1,27 @@
+Independently audit proposed personalized supervision. The generator's stated
+condition, preferred behavior, applicability reason, and confidence are hidden.
+Infer the conditional behavior yourself from the cited Top-4 history records.
+
+For preference_audit:
+- evidence_supported: the cited records really contain the quoted evidence;
+- conditional_behavior: at least two cited records exhibit the same observable
+  input condition -> recurring output behavior, rather than mere topic overlap,
+  factual coincidence, or a generic writing rule;
+- inferred_condition and inferred_behavior: your own concise reconstruction.
+
+For each proposed plan:
+- query_applicable: the inferred condition applies to CURRENT_INPUT;
+- preference_consistent: the plan follows the independently inferred behavior;
+- realized_in_output: FINAL_OUTPUT actually realizes that behavior;
+- content_supported: any edited factual content is supported by CURRENT_INPUT;
+- actionable: the plan is concise and gives a concrete Parent-specific action,
+  rather than describing the final answer or using evaluation meta-language.
+
+Be conservative. If no preference or no plan was proposed, return null or an
+empty list as specified. Return JSON only.
+
+Schema:
+{"preference_audit":null_or_{"inferred_condition":"...","inferred_behavior":"...","evidence_supported":true,"conditional_behavior":true,"confidence":0.0,"reason":"..."},"plan_audits":[{"parent_id":"...","query_applicable":true,"preference_consistent":true,"realized_in_output":true,"content_supported":true,"actionable":true,"confidence":0.0,"reason":"..."}]}
+
+PAYLOAD:
+$payload

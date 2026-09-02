@@ -1,0 +1,15 @@
+base: config_global_same_mevo_gated_output.yaml
+
+experiment:
+  name: mevo_global_same_mevo_gated_output_test100
+
+# Per-Pcs 官方 test100：100 个用户，共 608 条 Query。
+evaluation:
+  user_limit: 0
+  prediction_batch_size: 8
+  max_new_tokens: 96
+
+paths:
+  # 复用已经对完整 test100 生成的 608 条预测，只重新计算评估指标。
+  prediction_dir: result/20260826_094223_global_same_mevo_gated_output/predictions
+  reports_dir: result/20260826_094223_global_same_mevo_gated_output/test100_reports

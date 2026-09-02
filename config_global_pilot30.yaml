@@ -1,0 +1,32 @@
+base: config_global.yaml
+experiment:
+  name: mevo_global_semistructured_cot_pilot30
+splits:
+  train:
+    processed_split: global_cot_pilot_train300
+    limit: 300
+  validation:
+    processed_split: global_cot_pilot_validation100
+    limit: 100
+  test:
+    processed_split: global_cot_pilot_test100
+    limit: 100
+generation:
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+global_idpo:
+  user_limit: 30
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+  max_length: 1536
+  batch_size: 1
+  gradient_accumulation_steps: 8
+paths:
+  sft_dir: dataset/editor_sets/global_semistructured_cot_pilot30_sft
+  conditional_trace_dir: dataset/editor_sets/global_semistructured_cot_pilot30_traces
+  editor_output_dir: result/20260825_113716_global_semistructured_cot_pilot30/editor
+  idpo_dir: dataset/idpo/global_semistructured_cot_pilot30_idpo
+  prediction_dir: result/20260825_113716_global_semistructured_cot_pilot30/predictions
+  reports_dir: result/20260825_113716_global_semistructured_cot_pilot30/reports

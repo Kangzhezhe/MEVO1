@@ -1,0 +1,34 @@
+base: config_global_same_mevo_first50.yaml
+
+experiment:
+  name: mevo_global_same_mevo_gated_output
+
+paths:
+  editor_output_dir: result/20260826_094223_global_same_mevo_gated_output/editor
+  idpo_dir: dataset/idpo/global_same_mevo_gated_output
+  prediction_dir: result/20260826_094223_global_same_mevo_gated_output/predictions
+  reports_dir: result/20260826_094223_global_same_mevo_gated_output/reports
+
+comparison:
+  source_idpo_dir: dataset/idpo/global_same_mevo
+  source_candidate_root: dataset/candidate_sets
+  source_adaptation_split: global_same_mevo_adaptation_train
+
+global_idpo:
+  minimum_reward_margin: 0.03
+  minimum_parent_improvement: 0.02
+  dpo_include_teacher_crossover: false
+  epochs: 1
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  max_length: 512
+  learning_rate: 0.000005
+  trace_weight: 0.0
+  output_weight: 1.0
+
+sft_data:
+  supervision_mode: output_only
+
+inference:
+  max_new_tokens: 96
+  batch_size: 8

@@ -1,0 +1,66 @@
+base: config.yaml
+
+experiment:
+  name: perpcs_s0_output_only_train300_v1
+
+# 第一轮只验证全局 Editor + 共享 Ranker，不混入第二阶段 per-user Head。
+pipeline:
+  run_user_adaptation: false
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_s0_train300
+    limit: 300
+  validation:
+    partition: reserve
+    processed_split: perpcs_s0_validation100
+    limit: 100
+  test:
+    partition: test
+    processed_split: perpcs_s0_test100
+    limit: 100
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s0_output_only_train300_v1
+  editor_output_dir: result/perpcs_s0_output_only_editor_train300_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_s0_output_only_train300_v1
+  scorer_output_dir: result/perpcs_s0_output_only_scorer_train300_v1
+  user_scorer_output_dir: result/perpcs_s0_output_only_user_scorer_train300_v1
+  reports_dir: result/perpcs_s0_output_only_pipeline_train300_v1
+
+teacher:
+  cache_dir: dataset/cache/perpcs-s0-output-only-train300-v1
+
+generation:
+  # 这些 Parent 已由同一 Qwen Teacher target-blind 地生成；按 Query ID 复用，
+  # 若某条缺失，Stage 03 才重新请求 API。
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+
+sft_data:
+  supervision_mode: output_only
+  validation_fraction: 0.05
+  maximum_history_records: 4
+  maximum_examples_per_query: 4
+
+training:
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+  epochs: 2
+  max_steps: -1
+  batch_size: 1
+  gradient_accumulation_steps: 32
+  cuda_memory_fraction: 0.31
+
+scorer:
+  # 当前另一个用户进程占用约 17.5 GiB；缩短 q+c 序列以留出安全余量。
+  max_length: 256
+  batch_size: 1
+  group_batch_size: 1
+  inference_batch_size: 8
+  group_inference_batch_size: 1
+  gradient_accumulation_steps: 4
+

@@ -1,0 +1,12 @@
+Follow TASK_INSTRUCTION and generate exactly $count distinct final answers for
+the CURRENT_INPUT. Each answer must be a concise, single-line scholarly paper
+title (at most 30 words), not an abstract, summary, explanation, or sentence
+describing "this paper". Use only the current input. Do not use user history,
+a reference answer, a metric, or outside information. Return JSON only:
+{"candidates":["...","..."]}
+
+TASK_INSTRUCTION:
+$instruction
+
+CURRENT_INPUT:
+$current_input

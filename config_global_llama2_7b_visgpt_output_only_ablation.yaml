@@ -1,0 +1,23 @@
+base: config_global_llama2_7b_visgpt_prime_matched.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_output_only_ablation
+
+paths:
+  sft_dir: dataset/editor_sets/global_llama2_7b_visgpt_output_only_sft
+  conditional_trace_dir: dataset/editor_sets/global_llama2_7b_visgpt_output_only_traces_unused
+  idpo_dir: dataset/idpo/global_llama2_7b_visgpt_output_only_idpo
+
+sft_data:
+  supervision_mode: output_only
+
+training:
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+
+global_idpo:
+  rollout_response_mode: output_only
+  include_teacher_crossover: false
+  dpo_include_teacher_crossover: false
+  trace_weight: 0.0
+  output_weight: 1.0

@@ -1,0 +1,46 @@
+Infer at most ONE local conditional user preference from the retrieved history,
+then decide whether it applies to each current Parent. This request is strictly
+target-blind: the desired output is not available.
+
+A useful conditional preference has the form:
+
+  when an observable input condition occurs -> the user's outputs repeatedly
+  choose a particular response behavior
+
+The condition and behavior must be task-agnostic natural-language descriptions.
+Do not assign them to a predefined dimension or taxonomy.
+
+Rules:
+1. First search for the strongest supportable local pattern. Return
+   preference=null only when the Top-4 history does not contain at least two
+   different records supporting an analogous conditional input-to-output
+   behavior.
+   The records do NOT need to share a topic or literal terms: their inputs may
+   share an observable rhetorical situation such as introducing a named
+   approach, integrating components, contrasting alternatives, or reporting a
+   focused analysis. Their outputs must then make the same kind of selection,
+   emphasis, ordering, naming, compression, or phrasing choice. Do not reject a
+   pattern merely because the technical domains differ.
+2. Topic recurrence, shared entity names, factual content, and generic good
+   writing rules are not by themselves user preferences. A valid pattern must
+   connect an observable situation in each cited input to a recurring choice in
+   the corresponding output.
+3. Copy evidence input_span and output_span from the cited history record.
+   Minor whitespace, Unicode punctuation, or hyphen normalization is tolerated,
+   but paraphrased evidence is not.
+4. condition describes when the behavior is triggered. preferred_behavior
+   describes the recurring output choice, not the current answer.
+5. Return every Parent exactly once in applicability. decision=apply requires
+   an exact non-empty matched_input_span from CURRENT_INPUT and a concrete
+   explanation of why this Parent can use the preference. Otherwise use skip
+   and an empty matched_input_span.
+6. If preference=null, every Parent must be skip.
+7. Do not mention a desired answer, target, gold, reference, score, metric, or
+   ROUGE. Do not infer anything from candidate quality that history cannot show.
+8. Keep condition, preferred_behavior and reasons concise. Return JSON only.
+
+Schema:
+{"preference":null_or_{"preference_id":"p1","condition":"observable input condition","preferred_behavior":"recurring output behavior","evidence":[{"history_id":"...","input_span":"exact input substring","output_span":"exact output substring"},{"history_id":"...","input_span":"exact input substring","output_span":"exact output substring"}],"confidence":0.0},"applicability":[{"parent_id":"...","decision":"apply|skip","matched_input_span":"exact CURRENT_INPUT substring or empty","reason":"..."}]}
+
+PAYLOAD:
+$payload

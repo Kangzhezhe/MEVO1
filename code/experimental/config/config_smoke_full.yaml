@@ -1,0 +1,43 @@
+base: config_smoke.yaml
+
+experiment:
+  name: perpcs_gold_aware_sft_full_smoke
+
+paths:
+  editor_output_dir: result/perpcs_gold_aware_editor_full_smoke
+  scorer_data_dir: dataset/ranker_sets/perpcs_gold_aware_scorer_full_smoke
+  scorer_output_dir: result/perpcs_gold_aware_scorer_full_smoke
+  user_scorer_output_dir: result/perpcs_gold_aware_user_scorer_full_smoke
+  reports_dir: result/perpcs_gold_aware_pipeline_full_smoke
+
+training:
+  max_steps: 1
+  max_length: 512
+  gradient_accumulation_steps: 1
+  logging_steps: 1
+  cuda_memory_fraction: 0.28
+
+inference:
+  # Teacher 仍为 mock，但这里必须加载刚训练的一步 LoRA，验证真实推理接口。
+  mock_editor: false
+  max_new_tokens: 160
+  checkpoint_every: 1
+  resume_existing: false
+  batch_size: 4
+
+scorer:
+  epochs: 1
+  batch_size: 2
+  group_batch_size: 1
+  inference_batch_size: 8
+  group_inference_batch_size: 1
+  gradient_accumulation_steps: 2
+  pair_minimum_margin: 0.0
+  max_pairs_per_sample: 6
+
+user_adaptation:
+  epochs: 2
+  batch_size: 16
+  encoding_batch_size: 8
+  pair_minimum_margin: 0.0
+  max_pairs_per_sample: 6

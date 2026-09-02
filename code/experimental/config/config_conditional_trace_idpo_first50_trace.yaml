@@ -1,0 +1,26 @@
+base: config_conditional_trace_idpo_first50.yaml
+
+# Trace-aware IDPO 对照：用户范围、LOO 数据和8次on-policy采样与上一轮一致，
+# 只把第二阶段 response 从 output-only 改为第一阶段的条件偏好 Trace + output。
+experiment:
+  name: perpcs_conditional_trace_idpo_first50_v1
+
+paths:
+  idpo_dir: dataset/idpo/perpcs_conditional_trace_idpo_first50_v1
+
+idpo:
+  rollout_response_mode: conditional_preference_trace
+  # 第一阶段只在确有历史支持时提供Trace；第二阶段也遵守同一契约。
+  # 完整Trace采样不足4条时，整组回退到原来的output-only rollout。
+  trace_fallback_to_output_only: true
+  trace_maximum_history_records: 4
+  response_logp_weighting: trace_output_optional
+  trace_logp_weight: 0.2
+  output_logp_weight: 1.0
+  # 完整 Trace 比单标题长，沿用第一阶段的上下文长度口径。
+  max_length: 2048
+  rollout_batch_size: 4
+
+inference:
+  max_new_tokens: 256
+  batch_size: 4

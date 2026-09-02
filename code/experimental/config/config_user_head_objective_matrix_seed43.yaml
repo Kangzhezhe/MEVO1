@@ -1,0 +1,10 @@
+base: config_user_head_objective_matrix.yaml
+
+project:
+  seed: 43
+
+user_head_matrix:
+  output_dir: dataset/idpo/perpcs_idpo_gold_test_all_v1/round_0/user_ranker_objective_matrix_seed43
+  feature_cache: dataset/idpo/perpcs_idpo_gold_test_all_v1/round_0/user_ranker_objective_matrix/features.pt
+  objectives: [top_pairs, listwise_kl]
+

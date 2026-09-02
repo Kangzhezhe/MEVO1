@@ -1,0 +1,39 @@
+Create evidence-grounded atomic edit supervision for every Parent.
+
+For each Parent, compare it with DESIRED_OUTPUT and decompose the transformation
+into the smallest independently verifiable edits. Separate edits required by
+CURRENT_INPUT from edits supported by the user's recurring output behavior.
+
+An atomic operation has exactly one purpose and one type from:
+add, remove, replace, reorder, compress, expand, format, preserve.
+
+Rules:
+1. task_operations must be justified by CURRENT_INPUT. Do not attribute task
+   content or topical terminology to user preference.
+2. personalized_operations are optional. Each must cite at least two IDs from
+   TRUE_HISTORY that demonstrate the same recurring pattern, must be applicable
+   to the current Parent, and must not be equally supported by CONTRAST_HISTORY.
+3. If no reliable user-specific operation exists, return an empty
+   personalized_operations list. Never invent a preference.
+4. source_span and target_span must be the smallest useful spans. A span must not
+   cover most of the Parent or DESIRED_OUTPUT. Decompose a large rewrite into
+   several local remove/add/replace operations.
+5. Do not mention gold, reference, desired output, target answer, score, metric,
+   or ROUGE in any returned field. Explain the content change directly instead
+   of saying that it matches a supplied answer. Return concise evidence
+   summaries, not hidden chain-of-thought.
+6. Return each Parent exactly once and JSON only.
+
+Bad operation (not atomic):
+{"type":"replace","source_span":"the complete Parent title","target_span":"the complete final title"}
+
+Good decomposition:
+[{"type":"remove","source_span":"one unsupported phrase","target_span":""},
+ {"type":"replace","source_span":"one local term","target_span":"a better local term"},
+ {"type":"add","source_span":"","target_span":"one missing concept"}]
+
+Schema:
+{"traces":[{"parent_id":"...","task_operations":[{"type":"add|remove|replace|reorder|compress|expand|format|preserve","source_span":"...","target_span":"..."}],"personalized_operations":[{"type":"add|remove|replace|reorder|compress|expand|format|preserve","source_span":"...","target_span":"...","evidence_ids":["h1","h2"],"history_pattern":"...","application":"..."}]}]}
+
+PAYLOAD:
+$payload

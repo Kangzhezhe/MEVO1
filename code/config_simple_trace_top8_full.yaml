@@ -1,0 +1,77 @@
+base: config_conditional_trace_full.yaml
+
+# Top-8 只扩大可选历史证据池；每条简化 Trace 最终只引用1到2条历史。
+experiment:
+  name: perpcs_simple_trace_top8_full_v1
+
+pipeline:
+  run_gpu: true
+  run_user_adaptation: false
+  wait_for_gpu: true
+  gpu_memory_threshold_mib: 19000
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_simple_trace_top8_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: perpcs_simple_trace_top8_validation
+    limit: 0
+  test:
+    partition: test
+    processed_split: perpcs_simple_trace_top8_test100
+    limit: 0
+
+paths:
+  conditional_trace_dir: dataset/editor_sets/perpcs_simple_trace_top8_traces_full_v1
+  sft_dir: dataset/editor_sets/perpcs_simple_trace_top8_sft_full_v1
+  editor_output_dir: result/perpcs_simple_trace_top8_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_simple_trace_top8_full_v1
+  scorer_output_dir: result/perpcs_simple_trace_top8_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_simple_trace_top8_user_scorer_full_v1
+  reports_dir: result/perpcs_simple_trace_top8_pipeline_full_v1
+
+teacher:
+  cache_dir: dataset/cache/perpcs-simple-trace-top8-full-visgpt-v1
+
+# 继续复用旧实验的同一组4个 target-blind Parent，隔离 Trace 定义的影响。
+generation:
+  maximum_history_records: 8
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+
+evolution:
+  maximum_history_records: 8
+
+sft_data:
+  supervision_mode: simple_conditional_trace
+  maximum_history_records: 8
+  maximum_examples_per_query: 4
+
+simple_conditional_trace:
+  history_top_k: 8
+  # Top-8完整Abstract会造成2048-token截断；只压缩模型输入副本。
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+  minimum_evidence: 1
+  maximum_evidence: 2
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 20
+
+training:
+  max_length: 2048
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  cuda_memory_fraction: 0.90
+
+inference:
+  # 阶段一正式候选生成仍只请求最终 output；Trace 是训练辅助目标。
+  max_new_tokens: 96
+  batch_size: 4

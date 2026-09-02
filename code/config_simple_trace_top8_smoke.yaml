@@ -1,0 +1,19 @@
+base: config_simple_trace_top8_full.yaml
+
+experiment:
+  name: perpcs_simple_trace_top8_smoke_v1
+
+paths:
+  conditional_trace_dir: dataset/editor_sets/perpcs_simple_trace_top8_traces_full_v1
+  sft_dir: dataset/editor_sets/perpcs_simple_trace_top8_sft_smoke_v1
+  editor_output_dir: result/perpcs_simple_trace_top8_editor_smoke_v1
+
+training:
+  epochs: 1
+  max_steps: 1
+  batch_size: 1
+  gradient_accumulation_steps: 1
+  cuda_memory_fraction: 0.50
+
+pipeline:
+  run_gpu: false

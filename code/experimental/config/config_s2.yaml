@@ -1,0 +1,55 @@
+base: config_s0.yaml
+
+experiment:
+  name: perpcs_s2_atomic_trace_train300_v1
+
+pipeline:
+  run_user_adaptation: false
+  run_gpu: false
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_s2_train300
+    limit: 300
+  validation:
+    partition: reserve
+    processed_split: perpcs_s2_validation100
+    limit: 100
+  test:
+    partition: test
+    processed_split: perpcs_s2_test100
+    limit: 100
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s2_atomic_trace_train300_v1
+  editor_output_dir: result/perpcs_s2_atomic_trace_editor_train300_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_s2_atomic_trace_train300_v1
+  scorer_output_dir: result/perpcs_s2_atomic_trace_scorer_train300_v1
+  user_scorer_output_dir: result/perpcs_s2_atomic_trace_user_scorer_train300_v1
+  reports_dir: result/perpcs_s2_atomic_trace_pipeline_train300_v1
+
+teacher:
+  cache_dir: dataset/cache/perpcs-s2-atomic-trace-train300-v1
+
+generation:
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+
+sft_data:
+  supervision_mode: atomic_trace
+
+# S2 使用通过质量门控的原子编辑操作；拒绝的 Query 会回退到 output-only。
+# 与 S1 使用相同的 Trace 权重，保证比较只改变监督结构而不改变损失规模。
+training:
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+
+atomic_sft:
+  cache_dir: dataset/cache/perpcs-s2-atomic-trace-train300-v1
+  concurrency: 4
+  schema_retries: 3
+  checkpoint_every: 10
+  resume_existing: true

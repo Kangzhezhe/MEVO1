@@ -1,0 +1,28 @@
+base: config_idpo_gold_test_first50_pro6000.yaml
+
+user_head_matrix:
+  output_dir: dataset/idpo/perpcs_idpo_gold_test_all_v1/round_0/user_ranker_objective_matrix
+  feature_cache: dataset/idpo/perpcs_idpo_gold_test_all_v1/round_0/user_ranker_objective_matrix/features.pt
+  reuse_feature_cache: true
+  encoding_batch_size: 768
+  validation_fraction: 0.20
+  epochs: 20
+  group_batch_size: 32
+  learning_rate: 0.001
+  weight_decay: 0.0
+  anchor_strength: 0.1
+  max_grad_norm: 1.0
+  early_stopping_patience: 5
+  pair_minimum_margin: 0.02
+  max_pairs_per_group: 12
+  label_temperature: 0.05
+  score_temperature: 1.0
+  regret_temperature: 1.0
+  alpha_grid: [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+  objectives:
+    - top_pairs
+    - listwise_kl
+    - oracle_set
+    - expected_regret
+    - hybrid_top1
+

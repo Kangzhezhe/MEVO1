@@ -1,0 +1,47 @@
+base: config_global.yaml
+
+experiment:
+  name: mevo_global_same_mevo_first50
+
+# 与原 MEVO 的 50 用户 / 304 Query 结果保持一致的测试口径。
+evaluation:
+  user_limit: 50
+  prediction_batch_size: 8
+  max_new_tokens: 128
+
+splits:
+  train:
+    processed_split: global_same_mevo_train
+    limit: 0
+  validation:
+    processed_split: global_same_mevo_validation
+    limit: 0
+  test:
+    processed_split: global_same_mevo_test
+    limit: 0
+  adaptation_train:
+    processed_split: global_same_mevo_adaptation_train
+
+paths:
+  sft_dir: dataset/editor_sets/global_same_mevo_sft
+  conditional_trace_dir: /home/liux/kk/MEVO/dataset/editor_sets/perpcs_simple_trace_top8_traces_full_v1
+  editor_output_dir: result/20260825_194957_global_same_mevo/editor
+  idpo_dir: dataset/idpo/global_same_mevo
+  prediction_dir: result/20260825_194957_global_same_mevo/predictions
+  reports_dir: result/20260825_194957_global_same_mevo/reports
+
+generation:
+  # 训练/验证/测试 seed 与原 MEVO 使用同一缓存，避免 Teacher 生成差异混入比较。
+  reuse_processed_splits:
+    train: perpcs_simple_trace_top8_train
+    validation: perpcs_simple_trace_top8_validation
+    test: perpcs_simple_trace_top8_test100
+  resume_existing: true
+
+global_idpo:
+  # 先用 50 个训练用户完成可控的 Global IDPO 对照；SFT 仍使用完整 train split。
+  user_limit: 50
+  profiles_per_user: all
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+  resume_existing: true

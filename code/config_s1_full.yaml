@@ -1,0 +1,46 @@
+base: config_s1.yaml
+
+experiment:
+  name: perpcs_s1_free_trace_full_v1
+
+pipeline:
+  run_gpu: true
+  run_user_adaptation: false
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_s1_full_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: perpcs_s1_full_validation
+    limit: 0
+  test:
+    partition: test
+    processed_split: perpcs_s1_full_test
+    limit: 0
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s1_free_trace_full_v1
+  editor_output_dir: result/perpcs_s1_free_trace_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_s1_free_trace_full_v1
+  scorer_output_dir: result/perpcs_s1_free_trace_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_s1_free_trace_user_scorer_full_v1
+  reports_dir: result/perpcs_s1_free_trace_pipeline_full_v1
+
+teacher:
+  cache_dir: dataset/cache/perpcs-s1-free-trace-full-v1
+
+generation:
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+
+# max_length 从 1024 提高到 2048 后，batch=8 不再有足够显存余量。
+# 改为 batch=4、累积8，保持有效 batch=32。
+training:
+  batch_size: 4
+  gradient_accumulation_steps: 8
+  cuda_memory_fraction: 0.90

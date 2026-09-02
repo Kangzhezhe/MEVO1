@@ -1,0 +1,13 @@
+ijson
+json-repair
+numpy
+openai
+PyYAML
+rouge-score
+sacrebleu
+httpx[socks]
+pytest
+torch
+transformers
+huggingface-hub
+sentencepiece

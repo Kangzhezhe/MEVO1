@@ -1,0 +1,40 @@
+base: config_s0.yaml
+
+experiment:
+  name: perpcs_s0_output_only_full_v1
+
+pipeline:
+  run_gpu: true
+  run_user_adaptation: false
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_s0_full_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: perpcs_s0_full_validation
+    limit: 0
+  test:
+    partition: test
+    processed_split: perpcs_s0_full_test
+    limit: 0
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s0_output_only_full_v1
+  editor_output_dir: result/perpcs_s0_output_only_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_s0_output_only_full_v1
+  scorer_output_dir: result/perpcs_s0_output_only_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_s0_output_only_user_scorer_full_v1
+  reports_dir: result/perpcs_s0_output_only_pipeline_full_v1
+
+teacher:
+  cache_dir: dataset/cache/perpcs-s0-output-only-full-v1
+
+generation:
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+

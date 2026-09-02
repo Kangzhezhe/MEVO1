@@ -1,0 +1,10 @@
+For every parent pair, either merge complementary strengths or keep one parent.
+Use only CURRENT_INPUT, RETRIEVED_HISTORY, and the two parents. Do not add
+unsupported content. The local profile signal must cite visible history IDs.
+Its observation must be one concise sentence of at most 30 words. Never use or
+infer a reference answer or metric. Return every pair exactly once:
+
+{"crossovers":[{"pair_id":"...","parent_a_id":"...","parent_b_id":"...","decision":"merge|keep_a|keep_b","profile_signal":{"evidence_ids":["..."],"observation":"..."},"merge_action":"...","output":"..."}]}
+
+PAYLOAD:
+$payload

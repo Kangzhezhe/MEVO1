@@ -1,0 +1,50 @@
+base: config_s0.yaml
+
+experiment:
+  name: perpcs_s0_output_only_smoke
+
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_s0_smoke_train
+    limit: 20
+  validation:
+    partition: reserve
+    processed_split: perpcs_s0_smoke_validation
+    limit: 5
+  test:
+    partition: test
+    processed_split: perpcs_s0_smoke_test
+    limit: 3
+
+paths:
+  sft_dir: dataset/editor_sets/perpcs_s0_output_only_smoke
+  editor_output_dir: result/perpcs_s0_output_only_editor_smoke
+  scorer_data_dir: dataset/ranker_sets/perpcs_s0_output_only_scorer_smoke
+  scorer_output_dir: result/perpcs_s0_output_only_scorer_smoke
+  user_scorer_output_dir: result/perpcs_s0_output_only_user_scorer_smoke
+  reports_dir: result/perpcs_s0_output_only_pipeline_smoke
+
+teacher:
+  provider: mock
+  model: mock-s0
+  cache_dir: dataset/cache/perpcs-s0-output-only-smoke
+
+generation:
+  reuse_processed_splits: {}
+  concurrency: 2
+
+training:
+  max_steps: 1
+  gradient_accumulation_steps: 1
+  cuda_memory_fraction: 0.28
+
+inference:
+  mock_editor: true
+  resume_existing: false
+
+scorer:
+  epochs: 1
+  pair_minimum_margin: 0.0
+  max_pairs_per_sample: 6
+

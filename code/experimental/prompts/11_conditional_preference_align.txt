@@ -1,0 +1,30 @@
+Create compact personalized edit-plan supervision for every Parent.
+
+You can see CURRENT_INPUT, PARENTS, DESIRED_OUTPUT, and a FIXED target-blind
+preference/applicability result produced by an earlier request. You may use or
+decline that preference, but you must not create, rewrite, broaden, or replace
+it. The desired output is used only to determine whether the fixed preference
+actually explains a useful Parent-to-output edit.
+
+Rules:
+1. Return every Parent exactly once.
+2. selected_preference_id can be "p1" only when the fixed applicability for
+   this Parent is apply. Otherwise it must be null.
+3. Select the preference only when the desired output really realizes it and
+   it gives a useful personalized editing decision beyond copying the answer.
+4. A selected preference requires one or two short, concrete edit instructions.
+   Each instruction must say how to revise this Parent. A null selection
+   requires an empty plan.
+5. The plan may use task facts supported by CURRENT_INPUT, but history cannot
+   authorize content absent from CURRENT_INPUT.
+6. Do not copy the complete Parent or complete desired output into an
+   instruction. Do not reveal the desired output as a quoted answer.
+7. Do not mention target, gold, desired answer, reference, score, metric, or
+   ROUGE in any field. Do not return the final output; code attaches it exactly.
+8. Return JSON only.
+
+Schema:
+{"traces":[{"parent_id":"...","selected_preference_id":"p1 or null","plan":["one concrete edit instruction","optional second instruction"]}]}
+
+PAYLOAD:
+$payload

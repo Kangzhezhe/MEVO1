@@ -1,0 +1,28 @@
+Create compact atomic edit supervision for every Parent.
+
+You can see CURRENT_INPUT, PARENTS, DESIRED_OUTPUT and target-blind LOCAL_SIGNALS.
+LOCAL_SIGNALS were produced in a separate request without the desired output.
+You may apply or skip them, but you must not create, rewrite, or reinterpret a
+new signal.
+
+Rules:
+1. Return every Parent exactly once.
+2. selected_signals may contain only supplied signal IDs that listed this Parent
+   as applicable. Use an empty list when none genuinely helps.
+3. Each edit has one local purpose and one type: add, remove, replace, reorder,
+   compress, expand, format, preserve.
+4. source must be an exact local substring of the Parent, or empty for add.
+   target must be an exact local substring of DESIRED_OUTPUT, or empty for
+   remove. Never replace most of a complete title in one edit.
+5. cause=task when CURRENT_INPUT alone requires the edit; cause=profile when a
+   supplied signal decides the expression; cause=task_and_profile when both do.
+   profile causes require signal_id; task causes require null signal_id.
+6. Do not duplicate one change as separate task and profile edits.
+7. Do not mention gold, reference, score, metric, or ROUGE in text fields.
+8. Return JSON only. Do not return the final output; code attaches it exactly.
+
+Schema:
+{"traces":[{"parent_id":"...","selected_signals":[{"signal_id":"...","parent_gap":"...","expected_benefit":"..."}],"edits":[{"type":"add|remove|replace|reorder|compress|expand|format|preserve","source":"...","target":"...","cause":"task|profile|task_and_profile","query_basis":"short task basis or empty","signal_id":"... or null"}]}]}
+
+PAYLOAD:
+$payload

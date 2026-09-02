@@ -1,0 +1,30 @@
+base: config_global.yaml
+experiment:
+  name: mevo_global_semistructured_cot_smoke
+pipeline:
+  run_gpu: false
+  wait_for_gpu: false
+splits:
+  train:
+    processed_split: global_cot_smoke_train
+    limit: 2
+  validation:
+    processed_split: global_cot_smoke_validation
+    limit: 1
+  test:
+    processed_split: global_cot_smoke_test
+    limit: 1
+generation:
+  task_seeds: 1
+  profile_seeds: 1
+  concurrency: 1
+teacher:
+  provider: mock
+  model: mock
+paths:
+  sft_dir: dataset/editor_sets/global_semistructured_cot_smoke
+  conditional_trace_dir: dataset/editor_sets/global_semistructured_cot_traces_smoke
+global_idpo:
+  minimum_profile_count: 1
+  compact_profile_top_k: 2
+  dpo_include_teacher_crossover: true

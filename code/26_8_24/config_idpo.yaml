@@ -1,0 +1,239 @@
+# 当前最佳阶段二：前50用户全历史 LOO + Trace-aware IDPO + Per-user Ranker Head
+experiment:
+  name: perpcs_simple_trace_top8_idpo_first50_v1
+pipeline:
+  run_user_adaptation: false
+  run_gpu: true
+  wait_for_gpu: true
+  gpu_memory_threshold_mib: 19000
+project:
+  seed: 42
+data:
+  source_format: perpcs_lamp5
+  perpcs_root: ../PriME/data/scholarly_title
+  drop_missing_profile_abstracts: true
+splits:
+  train:
+    partition: base
+    processed_split: perpcs_simple_trace_top8_train
+    limit: 0
+  validation:
+    partition: reserve
+    processed_split: perpcs_simple_trace_top8_validation
+    limit: 0
+  test:
+    partition: test
+    processed_split: perpcs_simple_trace_top8_test100
+    limit: 0
+  adaptation_validation:
+    processed_split: perpcs_factor_free_adaptation_validation
+  adaptation_test:
+    processed_split: perpcs_simple_trace_top8_idpo_first50_adaptation_test
+paths:
+  candidate_root: dataset/candidate_sets
+  sft_dir: dataset/editor_sets/perpcs_simple_trace_top8_sft_full_v1
+  editor_output_dir: result/perpcs_simple_trace_top8_editor_full_v1
+  scorer_data_dir: dataset/ranker_sets/perpcs_simple_trace_top8_full_v1
+  scorer_output_dir: result/perpcs_simple_trace_top8_scorer_full_v1
+  user_scorer_output_dir: result/perpcs_simple_trace_top8_user_scorer_full_v1
+  reports_dir: result/perpcs_simple_trace_top8_pipeline_full_v1
+  conditional_trace_dir: dataset/editor_sets/perpcs_simple_trace_top8_traces_full_v1
+  idpo_dir: dataset/idpo/perpcs_simple_trace_top8_idpo_first50_v1
+retrieval:
+  top_k: 8
+  k1: 1.5
+  b: 0.75
+teacher:
+  provider: openai_compatible
+  model: gpt-4o
+  base_url: https://zwenai.cn:15500/api/v1
+  api_key_env: VIS_API_KEY
+  verify_ssl: false
+  trust_env: false
+  temperature: 0.0
+  timeout_seconds: 180
+  max_retries: 3
+  json_parse_retries: 5
+  max_tokens: 3000
+  cache_dir: dataset/cache/perpcs-conditional-preference-full-visgpt-v1
+  allow_repaired_json_scalar: true
+generation:
+  task_seeds: 1
+  profile_seeds: 0
+  maximum_history_records: 8
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 20
+  resume_existing: true
+  reuse_processed_splits:
+    train: perpcs_factor_free_train
+    validation: perpcs_factor_free_validation
+    test: perpcs_factor_free_test100
+evolution:
+  mutations_per_query: 4
+  crossovers_per_query: 2
+  candidate_budget: 10
+  maximum_history_records: 8
+  concurrency: 4
+  schema_retries: 2
+  checkpoint_every: 10
+  resume_existing: true
+metric:
+  primary: rouge_l
+  preference_margin: 0.02
+sft_data:
+  supervision_mode: simple_conditional_trace
+  validation_fraction: 0.05
+  maximum_history_records: 8
+  maximum_examples_per_query: 4
+model:
+  name: Qwen2.5-1.5B-Instruct
+  path: /data/liux/MEVO/models/Qwen2.5-1.5B-Instruct
+lora:
+  rank: 16
+  alpha: 32
+  dropout: 0.05
+  target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+training:
+  seed: 42
+  max_length: 2048
+  trace_loss_weight: 0.2
+  output_loss_weight: 1.0
+  epochs: 2
+  max_steps: -1
+  batch_size: 1
+  gradient_accumulation_steps: 32
+  learning_rate: 0.0002
+  warmup_ratio: 0.05
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  logging_steps: 10
+  save_total_limit: 2
+  cuda_memory_fraction: 0.85
+inference:
+  max_new_tokens: 192
+  do_sample: false
+  temperature: 1.0
+  top_p: 1.0
+  checkpoint_every: 10
+  resume_existing: true
+  fallback_on_invalid_json: true
+  batch_size: 4
+scorer:
+  model_name: microsoft/deberta-v3-base
+  input_mode: task_only
+  input_order: candidate_first
+  raw_text_input: false
+  trainable_encoder_layers: all
+  max_length: 256
+  batch_size: 1
+  group_batch_size: 1
+  inference_batch_size: 8
+  group_inference_batch_size: 1
+  gradient_accumulation_steps: 4
+  gradient_checkpointing: true
+  epochs: 5
+  learning_rate: 5.0e-06
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+  max_grad_norm: 1.0
+  early_stopping_patience: 2
+  objective: hybrid
+  pair_strategy: top_pairs
+  pair_minimum_margin: 0.02
+  max_pairs_per_sample: 12
+  pairwise_weight: 0.3
+  listwise_weight: 0.0
+  oracle_set_weight: 1.0
+  oracle_tie_tolerance: 0.02
+  listwise_temperature: 0.1
+  score_temperature: 1.0
+  pointwise_weight: 0.0
+  listmle_weight: 0.0
+  expected_regret_weight: 0.0
+  lambda_top1_weight: 0.0
+  mixed_precision: bf16
+  deterministic: true
+  deterministic_warn_only: true
+  checkpoint_selection: mean_regret
+  device: cuda
+profile_augmentation:
+  profiles_per_user: all
+  minimum_profile_count: 10
+  compact_profile_top_k: 8
+user_adaptation:
+  mode: linear_head
+  adapter_rank: 16
+  initialization: global_checkpoint
+  epochs: 20
+  learning_rate: 0.001
+  weight_decay: 0.0
+  anchor_strength: 0.1
+  batch_size: 64
+  encoding_batch_size: 32
+  max_grad_norm: 1.0
+  pair_strategy: top_pairs
+  pair_minimum_margin: 0.02
+  max_pairs_per_sample: 12
+  calibration_queries: 1
+  alpha_scope: per_user
+  blend_alpha_grid:
+  - 0.0
+  - 0.25
+  - 0.5
+  - 0.75
+  - 1.0
+  device: cuda
+idpo:
+  round: 0
+  source_split: test
+  user_limit: 50
+  pseudo_queries_per_user: 0
+  maximum_history_records: 8
+  rollout_operations:
+  - mutation
+  rollout_mutation_parents: 1
+  rollout_samples: 8
+  rollout_do_sample: true
+  rollout_temperature: 0.8
+  rollout_top_p: 0.95
+  rollout_batch_size: 4
+  rollout_query_batch_size: 1
+  minimum_valid_responses: 4
+  checkpoint_every: 20
+  resume_existing: true
+  mock_editor: false
+  mock_training: false
+  policy_adapter_root: ''
+  reference_adapter_path: ''
+  preference_source: loo_gold
+  gold_reward_metric: rouge_l
+  minimum_reward_margin: 0.03
+  beta: 0.1
+  epochs: 1
+  learning_rate: 5.0e-06
+  weight_decay: 0.0
+  max_grad_norm: 1.0
+  batch_size: 2
+  gradient_accumulation_steps: 2
+  minimum_pairs_per_user: 10
+  max_length: 2048
+  length_normalized_logp: false
+  seed: 42
+  device: cuda
+  rollout_response_mode: simple_conditional_trace
+  trace_fallback_to_output_only: true
+  trace_maximum_history_records: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300
+  response_logp_weighting: trace_output_optional
+  trace_logp_weight: 0.2
+  output_logp_weight: 1.0
+simple_conditional_trace:
+  history_top_k: 8
+  history_input_max_chars: 500
+  history_output_max_chars: 300

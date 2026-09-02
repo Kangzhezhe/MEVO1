@@ -1,0 +1,24 @@
+base: config_global_llama2_7b_visgpt_output_only_ablation.yaml
+
+experiment:
+  name: mevo_global_llama2_7b_visgpt_output_only_full_eval_sft
+
+splits:
+  test:
+    partition: test
+    processed_split: global_llama2_7b_visgpt_test100_full
+    limit: 0
+
+paths:
+  editor_output_dir: /data/liux/MEVO_global_cot/result/20260830_121025_mevo_global_llama2_7b_visgpt_output_only_ablation/editor
+  prediction_dir: /data/liux/MEVO_global_cot/result/20260830_121025_mevo_global_llama2_7b_visgpt_output_only_ablation/predictions/full_test100_sft
+  reports_dir: /data/liux/MEVO_global_cot/result/20260830_121025_mevo_global_llama2_7b_visgpt_output_only_ablation/reports/full_test100_sft
+
+model:
+  prediction_adapter_path: /data/liux/MEVO_global_cot/result/20260830_121025_mevo_global_llama2_7b_visgpt_output_only_ablation/editor/final_adapter
+  prediction_base_only: false
+
+evaluation:
+  prediction_batch_size: 8
+  max_new_tokens: 128
+  user_limit: 0
