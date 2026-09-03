@@ -1,0 +1,44 @@
+# Crossover-only SFT：正式运行时由 CLI 指定独立 data-dir/run-dir。
+base: config_multitask_title_rationale_sft.yaml
+
+experiment:
+  name: mevo_llama2_7b_crossover_only_sft
+
+crossover_sft:
+  # greedy Parent A 之外进行 best-of-6 sampling；为控制 4096 上下文下的
+  # KV cache，每次最多同时生成 4 个序列。
+  temperature: 0.8
+  top_p: 0.9
+  best_of_n_samples: 6
+  sampling_batch_size: 4
+  max_new_tokens: 64
+  concurrency: 2
+  schema_retries: 2
+  checkpoint_every: 20
+  # Parent B 先通过绝对质量/事实相关性过滤，再参与 MMR；Teacher 的 merge
+  # 决策还会经过程序一致性门控。Gold 只在离线门控和 merge 标签中使用。
+  minimum_parent_words: 3
+  maximum_parent_words: 30
+  minimum_query_overlap_tokens: 1
+  minimum_query_grounding_ratio: 0.25
+  minimum_parent_mean_logprob: -2.5
+  high_quality_parent_mean_logprob: -0.25
+  maximum_logprob_gap_from_a: 1.5
+  minimum_incremental_query_tokens: 1
+  minimum_parent_gold_rouge_l: 0.05
+
+sft_data:
+  supervision_mode: plain_output_only
+  maximum_history_records: 8
+  validation_fraction: 0.05
+
+training:
+  trace_loss_weight: 0.0
+  output_loss_weight: 1.0
+  # Llama2-7B 原生上下文为 4096。SFT 包含 Prompt+Gold；推理自动为
+  # max_new_tokens 预留空间，并与训练统一使用保留头尾的截断方式。
+  max_length: 4096
+  batch_size: 1
+  gradient_accumulation_steps: 16
+  epochs: 2
+  learning_rate: 0.0002

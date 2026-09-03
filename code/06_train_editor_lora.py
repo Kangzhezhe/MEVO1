@@ -28,6 +28,7 @@ from pipeline_common import (  # noqa: E402
     load_config,
     read_jsonl,
     resolve_path,
+    truncate_prompt_ids,
     write_json,
 )
 
@@ -59,10 +60,9 @@ class TraceOutputDataset(Dataset):
                 raise ValueError(f"example={row['example_id']} 的响应超过 max_length")
             maximum_prompt = max_length - response_length
             if len(prompt_ids) > maximum_prompt:
-                # 同时保留输入开头和靠近末尾的 Parent/Profile 控制信息。
-                head = max(1, maximum_prompt // 2)
-                prompt_ids = prompt_ids[:head] + prompt_ids[-(maximum_prompt - head) :]
                 self.truncated_prompts += 1
+            # 与 Parent 生成和 Adapter 推理共享同一截断契约。
+            prompt_ids = truncate_prompt_ids(prompt_ids, maximum_prompt)
             input_ids = prompt_ids + trace_ids + output_ids
             labels = [-100] * len(prompt_ids) + trace_ids + output_ids
             # 每个 span 的总权重固定，不因 Trace 更长而压过最终输出。
@@ -251,6 +251,9 @@ def train(config: dict, max_steps_override: int | None = None) -> dict[str, Any]
         "initial_adapter": None if initial_adapter is None else str(initial_adapter),
         "train_examples": len(train_data),
         "validation_examples": len(validation_data),
+        "max_length": int(settings["max_length"]),
+        "train_truncated_prompts": int(train_data.truncated_prompts),
+        "validation_truncated_prompts": int(validation_data.truncated_prompts),
         "trace_loss_weight": float(settings["trace_loss_weight"]),
         "output_loss_weight": float(settings["output_loss_weight"]),
         "span_length_normalized": True,

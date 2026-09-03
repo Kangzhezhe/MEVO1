@@ -26,6 +26,7 @@ from pipeline_common import (  # noqa: E402
     resolve_path,
     score_candidate_pool,
     stage_path,
+    truncate_prompt_ids,
     validate_crossover,
     validate_mutation,
     visible_history,
@@ -198,7 +199,14 @@ class LocalEditor:
             # 必须与 SFT Dataset 一致地同时保留 Prompt 开头的任务说明和末尾的
             # Parent/OUTPUT 标记。Tokenizer 默认右截断会切掉末尾，模型随后只会
             # 续写中间的 History JSON，导致大量无关输出和无效 JSON。
-            maximum = int(self.config["training"]["max_length"])
+            # max_length 是模型总上下文窗口；推理先为新生成文本留出空间。
+            # 截断算法与 SFT 相同，只是 SFT 按真实标签长度预留，而推理按
+            # max_new_tokens 的最坏情况预留。
+            maximum = int(self.config["training"]["max_length"]) - int(
+                settings["max_new_tokens"]
+            )
+            if maximum <= 1:
+                raise ValueError("max_length 必须显著大于 inference.max_new_tokens")
             batch_ids = [
                 truncate_prompt_ids(
                     self.tokenizer.encode(prompt, add_special_tokens=True), maximum
@@ -247,17 +255,6 @@ class LocalEditor:
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
         return results
-
-
-def truncate_prompt_ids(input_ids: list[int], maximum: int) -> list[int]:
-    """保留 Prompt 头尾；与训练数据的截断契约一致。"""
-
-    if maximum <= 1:
-        raise ValueError("maximum 必须大于 1")
-    if len(input_ids) <= maximum:
-        return input_ids
-    head = max(1, maximum // 2)
-    return input_ids[:head] + input_ids[-(maximum - head) :]
 
 
 class MockLocalEditor:

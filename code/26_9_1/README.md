@@ -90,3 +90,98 @@ python code/26_9_1/build_multitask_rationale_sft.py \
 
 该 pilot 使用 test 样本，仅用于质量检查，不能用于正式 SFT 训练。正式训练必须使用
 train split，并按 Query 先划分 train/validation，再生成两个任务样本。
+
+## Crossover-only SFT
+
+当前 Llama2-7B Crossover/Dual-operator 流程使用 4096-token 上下文。SFT、
+Parent 生成与 Adapter 推理统一使用“保留 Prompt 头尾”的截断方式；推理会为
+生成的 64 tokens 预留上下文，避免默认右截断删除 Parent 和 `OUTPUT:`。
+
+正式 Crossover v2 保持纯标题单任务：Teacher 只负责严格判断
+`merge/keep_a/keep_b/reject`，程序再次检查贡献描述与 decision 是否一致。
+`merge` 监督 Gold，`keep_a/keep_b` 监督对应 Parent，`reject` 不进入训练；
+Teacher 的解释只保留作门控诊断，不进入 Student loss。入口为
+`run_crossover_gate_v2_full.sh`。
+
+[`run_crossover_sft.py`](./run_crossover_sft.py) 是独立的 Crossover 数据、训练和
+评估入口。正式数据协议如下：
+
+```text
+Query + Top-8 History
+        ↓
+Llama2-7B：1 greedy + 3 sampled Parents
+        ↓
+target-blind MMR 选择 Parent A/B
+        ↓
+Teacher 只用 Gold 判断 Pair 是否真的可融合
+        ↓
+[CROSSOVER_TITLE] Query + History + Parent A + Parent B -> Gold
+```
+
+Student 始终输出一行纯文本标题。Teacher 不生成最终标签，Gold 由程序写入
+`output_text`，且不会进入 Student Prompt。正式运行分三段，以适配数据环境和
+GPU 训练环境：
+
+```bash
+ROOT=/home/liux/kk/MEVO_global_cot
+CROSS_DATA=/data/liux/MEVO_global_cot/dataset/editor_sets/crossover_only_sft_v1
+CROSS_RUN=/data/liux/MEVO_global_cot/result/crossover_only_sft_v1
+
+# 1. 真实 Base Parent Pool + VisGPT Pair 门控 + SFT JSONL
+/home/liux/kk/MEVO/.venv/bin/python \
+  "$ROOT/code/26_9_1/run_crossover_sft.py" \
+  --stage build --data-dir "$CROSS_DATA" --run-dir "$CROSS_RUN" \
+  --pool-source base_model --teacher-mode api
+
+# 2. Llama2-7B FP16 LoRA
+/home/liux/miniconda3/envs/hydra/bin/python \
+  "$ROOT/code/26_9_1/run_crossover_sft.py" \
+  --stage train --data-dir "$CROSS_DATA" --run-dir "$CROSS_RUN"
+
+# 3. 标准 test100；无 Pair Query 回退 greedy Parent，仍计入608分母
+/home/liux/miniconda3/envs/hydra/bin/python \
+  "$ROOT/code/26_9_1/run_crossover_sft.py" \
+  --stage eval --data-dir "$CROSS_DATA" --run-dir "$CROSS_RUN" \
+  --pool-source base_model --teacher-mode api
+```
+
+Parent Pool 和 Teacher Pair 标注都支持断点缓存。只有
+`pool_source=base_model + teacher_mode=api + 非 smoke` 的 manifest 才会标记为
+可用于正式报告。
+
+## Dual-operator SFT
+
+[`run_dual_operator_sft.py`](./run_dual_operator_sft.py) 不重复生成 Parent 或调用
+Teacher，而是复用 Crossover 目录，构造：
+
+```text
+[MUTATION_TITLE]  Query + History + Parent A            -> Gold
+[CROSSOVER_TITLE] Query + History + Parent A + Parent B -> Gold
+```
+
+有合格 Pair 的 Query 使用 `0.7/0.3` Mutation/Crossover 权重；无合格 Pair 时只
+保留权重为 `1.0` 的 Mutation。正式 Dual-operator Adapter 从 Base 初始化，不从
+Crossover-only Adapter 顺序训练。
+
+```bash
+DUAL_DATA=/data/liux/MEVO_global_cot/dataset/editor_sets/dual_operator_sft_v1
+DUAL_RUN=/data/liux/MEVO_global_cot/result/dual_operator_sft_v1
+
+/home/liux/kk/MEVO/.venv/bin/python \
+  "$ROOT/code/26_9_1/run_dual_operator_sft.py" \
+  --stage build --crossover-data-dir "$CROSS_DATA" \
+  --data-dir "$DUAL_DATA" --run-dir "$DUAL_RUN"
+
+/home/liux/miniconda3/envs/hydra/bin/python \
+  "$ROOT/code/26_9_1/run_dual_operator_sft.py" \
+  --stage train --crossover-data-dir "$CROSS_DATA" \
+  --data-dir "$DUAL_DATA" --run-dir "$DUAL_RUN"
+
+/home/liux/miniconda3/envs/hydra/bin/python \
+  "$ROOT/code/26_9_1/run_dual_operator_sft.py" \
+  --stage eval --crossover-data-dir "$CROSS_DATA" \
+  --data-dir "$DUAL_DATA" --run-dir "$DUAL_RUN"
+```
+
+评估分别保存 Mutation、Crossover 和 Gold Oracle。Oracle 仅诊断候选池上限，
+不能作为正式可部署结果；后续由 Shared Ranker 完成不可见 Gold 的 Top-1 选择。

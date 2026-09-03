@@ -105,6 +105,22 @@ def write_jsonl(path: str | Path, rows: Iterable[dict[str, Any]]) -> None:
         raise
 
 
+def truncate_prompt_ids(input_ids: list[int], maximum: int) -> list[int]:
+    """统一截断过长 Prompt，同时保留任务开头和末尾控制信息。
+
+    Editor Prompt 的 Query 位于前部，而 Parent、输出格式和 ``OUTPUT:`` 位于
+    末尾。默认右截断会删除编辑任务末尾，使模型退化成 History 续写。训练、
+    Parent 生成和 Adapter 推理共同调用本函数，避免输入处理口径不一致。
+    """
+
+    if maximum <= 1:
+        raise ValueError("Prompt token 上限必须大于 1")
+    if len(input_ids) <= maximum:
+        return input_ids
+    head = max(1, maximum // 2)
+    return input_ids[:head] + input_ids[-(maximum - head) :]
+
+
 def write_json(path: str | Path, value: Any) -> None:
     destination = Path(path)
     destination.parent.mkdir(parents=True, exist_ok=True)

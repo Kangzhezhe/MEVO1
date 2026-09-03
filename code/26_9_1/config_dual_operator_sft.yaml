@@ -1,0 +1,11 @@
+# Mutation + Crossover 共用一个 LoRA 的正式 Dual-operator SFT。
+base: config_crossover_sft.yaml
+
+experiment:
+  name: mevo_llama2_7b_dual_operator_sft
+
+dual_operator_sft:
+  mutation_weight: 0.7
+  crossover_weight: 0.3
+  rationale_supervision: false
+
