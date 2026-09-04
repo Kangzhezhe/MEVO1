@@ -5,27 +5,20 @@ experiment:
   name: mevo_llama2_7b_crossover_only_sft
 
 crossover_sft:
-  # greedy Parent A 之外进行 best-of-6 sampling；为控制 4096 上下文下的
-  # KV cache，每次最多同时生成 4 个序列。
-  temperature: 0.8
-  top_p: 0.9
-  best_of_n_samples: 6
+  # 正式输入固定为 1 个 greedy + 4 个 sampling Parent。只生成这 4 个，
+  # 不做 best-of-N 过采样、语义筛 B 或 Teacher Gold 门控。
+  # Llama2 Base 在含 Parent 的标题 Prompt 上分布较尖锐；适度提高采样温度，
+  # 让四个采样候选提供差异。仍不按概率或 Gold 排名这些候选。
+  temperature: 1.1
+  top_p: 0.95
+  sample_parent_count: 4
+  total_parent_count: 5
   sampling_batch_size: 4
   max_new_tokens: 64
-  concurrency: 2
-  schema_retries: 2
   checkpoint_every: 20
-  # Parent B 先通过绝对质量/事实相关性过滤，再参与 MMR；Teacher 的 merge
-  # 决策还会经过程序一致性门控。Gold 只在离线门控和 merge 标签中使用。
-  minimum_parent_words: 3
-  maximum_parent_words: 30
-  minimum_query_overlap_tokens: 1
-  minimum_query_grounding_ratio: 0.25
-  minimum_parent_mean_logprob: -2.5
-  high_quality_parent_mean_logprob: -0.25
-  maximum_logprob_gap_from_a: 1.5
-  minimum_incremental_query_tokens: 1
-  minimum_parent_gold_rouge_l: 0.05
+  # 每个训练 Query：一个完整候选集合样本 + 一个随机保留 2--4 个候选的样本。
+  # Validation/Test 始终使用完整有效候选集合。
+  candidate_dropout_copies: 1
 
 sft_data:
   supervision_mode: plain_output_only

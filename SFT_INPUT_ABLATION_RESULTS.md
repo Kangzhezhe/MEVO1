@@ -1,5 +1,11 @@
 # Llama2-7B SFT 输入与监督方式对比
 
+> **历史口径说明：** 本文档中的旧结果实际使用了 Teacher 生成的
+> `task_seed_0`。其中 Base/Direct 将该 seed 直接放入 `PARENT TITLE`，
+> Parent-aware/Multitask 则使用几乎完全复制该 seed 的 Base Parent。
+> 因而下表是 Seed-assisted 历史结果，不是严格的无 Seed 输入消融。
+> 无 Seed 重跑入口见 `code/26_9_3/README.md`。
+
 ## 实验口径
 
 以下实验使用相同的评估口径：

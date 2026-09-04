@@ -103,6 +103,22 @@ Parent 生成与 Adapter 推理统一使用“保留 Prompt 头尾”的截断�
 Teacher 的解释只保留作门控诊断，不进入 Student loss。入口为
 `run_crossover_gate_v2_full.sh`。
 
+## 当前正式 Crossover：无 Teacher 多 Parent 聚合 v4
+
+旧的 `run_crossover_sft.py` / `run_crossover_bestofn_v3_full.sh` 保留用于复现
+二元 Pair + Teacher gate 消融，不再作为正式主链路。当前入口是：
+
+```bash
+bash code/26_9_1/run_multi_parent_crossover_v4_full.sh
+```
+
+实现文件为 `run_multi_parent_crossover_sft.py`。每个 Query 请求 1 个 greedy
+Parent 和 4 个 sampling Parent，精确去重并清理明显格式污染后，将最多 5 个、
+至少 2 个有效 Parent 与 Query、Top-8 History 一起输入 Editor，监督输出为 Gold
+纯文本标题。训练候选随机排序，并为训练集增加一个 candidate-dropout 副本；
+Validation/Test 使用全部有效候选。Teacher API、Gold 语义门控、Parent B 选择和
+ROUGE/log-prob 排名均不在该链路中。
+
 [`run_crossover_sft.py`](./run_crossover_sft.py) 是独立的 Crossover 数据、训练和
 评估入口。正式数据协议如下：
 
