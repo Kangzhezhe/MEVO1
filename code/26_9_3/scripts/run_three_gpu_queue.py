@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """无 Seed SFT/Crossover 三 GPU 队列调度器。
 
-资源：local GPU0、RTX3090 GPU0、RTX3090 GPU1。
+资源：local GPU0、RTX3090 GPU0、RTX3090 GPU1。GPU 任务交给两端的
+Task Spooler；显卡被外部用户占用时保持 queued，不直接尝试启动。
 阶段：
   1. 远端两卡生成 Main Pool，local GPU 同时训练 Direct SFT；Direct 完成后
      local GPU 接手 Main Pool 第三分片。
@@ -13,6 +14,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import shlex
@@ -34,6 +36,12 @@ REMOTE_ROOT = os.environ.get(
 REMOTE_PYTHON = os.environ.get(
     "REMOTE_PYTHON", "/home_new/gp4_liux/kk/envs/mevo-direct/bin/python"
 )
+LOCAL_TS = os.environ.get("LOCAL_TS", "/home/liux/bin/ts")
+LOCAL_TS_SOCKET = os.environ.get("LOCAL_TS_SOCKET", "/tmp/ts-liux-mevo.sock")
+REMOTE_TS = os.environ.get("REMOTE_TS", "/home_new/gp4_liux/bin/ts")
+REMOTE_TS_SOCKET = os.environ.get(
+    "REMOTE_TS_SOCKET", "/tmp/ts-gp4_liux-mevo.sock"
+)
 CONFIG = ROOT / "config_global_llama2_7b_visgpt_prime_matched.yaml"
 REMOTE_CONFIG = Path(REMOTE_ROOT) / CONFIG.name
 TRAIN_TOTAL, TEST_TOTAL = 3643, 608
@@ -41,9 +49,11 @@ TRAIN_RANGES = [(0, 1215), (1215, 2430), (2430, 3643)]
 TEST_RANGES = [(0, 203), (203, 406), (406, 608)]
 
 
-def run(command: list[str], *, check: bool = True) -> None:
+def run(
+    command: list[str], *, check: bool = True, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     print("RUN", " ".join(shlex.quote(x) for x in command), flush=True)
-    subprocess.run(command, check=check)
+    return subprocess.run(command, check=check, env=env, text=True)
 
 
 def marker_path(log_root: Path, name: str) -> Path:
@@ -60,11 +70,22 @@ def launch_local(name: str, gpu: int, command: list[str], log_root: Path) -> Pat
     log_text = shlex.quote(str(log_root / f"{name}.log"))
     shell = (
         f"set +e; cd {shlex.quote(str(ROOT))}; "
-        f"CUDA_VISIBLE_DEVICES={gpu} {command_text} >> {log_text} 2>&1; "
+        f"{command_text} >> {log_text} 2>&1; "
         f"status=$?; echo $status > {marker_text}; exit $status"
     )
-    run(["tmux", "new-session", "-d", "-s", name, "bash", "-lc", shell])
-    print(f"LAUNCH local name={name} gpu={gpu}", flush=True)
+    # Keep the command stored by Task Spooler short; full commands can exceed
+    # its internal command field.  The generated launcher is also useful for
+    # reproducing a failed queue item.
+    launcher = log_root / f"{name}.job.sh"
+    launcher.write_text("#!/usr/bin/env bash\n" + shell + "\n", encoding="utf-8")
+    launcher.chmod(0o755)
+    env = dict(os.environ)
+    env["TS_SOCKET"] = LOCAL_TS_SOCKET
+    run(
+        [LOCAL_TS, "-G", "1", "-L", name, "bash", str(launcher)],
+        env=env,
+    )
+    print(f"ENQUEUE local name={name} requested_slot={gpu}", flush=True)
     return marker
 
 
@@ -73,11 +94,22 @@ def launch_remote(name: str, gpu: int, command: list[str], remote_log_root: str)
     command_text = " ".join(shlex.quote(item) for item in command)
     shell = (
         f"set +e; cd {shlex.quote(REMOTE_ROOT)}; "
-        f"CUDA_VISIBLE_DEVICES={gpu} {command_text} >> {shlex.quote(remote_log_root)}/{name}.log 2>&1; "
+        f"{command_text} >> {shlex.quote(remote_log_root)}/{name}.log 2>&1; "
         f"status=$?; echo $status > {shlex.quote(marker)}; exit $status"
     )
-    run(["ssh", REMOTE, f": > {shlex.quote(marker + '.pending')}; screen -dmS {shlex.quote(name)} bash -lc {shlex.quote(shell)}"])
-    print(f"LAUNCH remote name={name} gpu={gpu}", flush=True)
+    launcher = f"{remote_log_root}/{name}.job.sh"
+    encoded = base64.b64encode(("#!/usr/bin/env bash\n" + shell + "\n").encode()).decode()
+    submit = (
+        f"mkdir -p {shlex.quote(remote_log_root)}; "
+        f"printf %s {shlex.quote(encoded)} | base64 -d > {shlex.quote(launcher)}; "
+        f"chmod 755 {shlex.quote(launcher)}; "
+        f"test ! -e {shlex.quote(marker)} || unlink {shlex.quote(marker)}; "
+        f": > {shlex.quote(marker + '.pending')}; "
+        f"TS_SOCKET={shlex.quote(REMOTE_TS_SOCKET)} {shlex.quote(REMOTE_TS)} "
+        f"-G 1 -L {shlex.quote(name)} bash {shlex.quote(launcher)}"
+    )
+    run(["ssh", REMOTE, submit])
+    print(f"ENQUEUE remote name={name} requested_slot={gpu}", flush=True)
     return marker
 
 
@@ -93,6 +125,39 @@ def remote_status(marker: str) -> str:
         check=True,
     )
     return result.stdout.strip()
+
+
+def configure_task_spoolers() -> None:
+    """Start/configure the two unprivileged GPU queues idempotently."""
+
+    local_log = ROOT / "logs" / "task_spooler"
+    local_log.mkdir(parents=True, exist_ok=True)
+    local_env = dict(os.environ)
+    local_env.update(
+        {
+            "TS_SOCKET": LOCAL_TS_SOCKET,
+            "TS_VISIBLE_DEVICES": "0",
+            "TS_SLOTS": "1",
+        }
+    )
+    run([LOCAL_TS, "--version"], env=local_env)
+    run([LOCAL_TS, "-S", "1"], env=local_env)
+    run([LOCAL_TS, "--set_gpu_free_perc", "90"], env=local_env)
+    run([LOCAL_TS, "--set_logdir", str(local_log)], env=local_env)
+
+    remote_log = f"{REMOTE_ROOT}/logs/task_spooler"
+    remote_setup = (
+        f"mkdir -p {shlex.quote(remote_log)}; "
+        f"TS_SOCKET={shlex.quote(REMOTE_TS_SOCKET)} "
+        "TS_VISIBLE_DEVICES=0,1 TS_SLOTS=2 "
+        f"{shlex.quote(REMOTE_TS)} --version; "
+        f"TS_SOCKET={shlex.quote(REMOTE_TS_SOCKET)} {shlex.quote(REMOTE_TS)} -S 2; "
+        f"TS_SOCKET={shlex.quote(REMOTE_TS_SOCKET)} {shlex.quote(REMOTE_TS)} "
+        "--set_gpu_free_perc 90; "
+        f"TS_SOCKET={shlex.quote(REMOTE_TS_SOCKET)} {shlex.quote(REMOTE_TS)} "
+        f"--set_logdir {shlex.quote(remote_log)}"
+    )
+    run(["ssh", REMOTE, remote_setup])
 
 
 def wait_jobs(jobs: list[tuple[str, str | Path]]) -> None:
@@ -174,13 +239,36 @@ def pool_command(
     ]
 
 
+def jsonl_rows(path: Path) -> int:
+    if not path.is_file():
+        return -1
+    with path.open("rb") as handle:
+        return sum(1 for line in handle if line.strip())
+
+
+def completed_main_stage(pool_root: Path, result_root: Path) -> bool:
+    """Verify artifacts required to resume immediately after stage 1."""
+
+    return (
+        jsonl_rows(pool_root / "train_parent_pool.jsonl") == TRAIN_TOTAL
+        and jsonl_rows(pool_root / "test_parent_pool.jsonl") == TEST_TOTAL
+        and (result_root / "direct_sft/evaluation/global_test_report.json").is_file()
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="三 GPU 无 Seed 实验队列")
     parser.add_argument("--run-name", default="")
+    parser.add_argument(
+        "--resume-after-main",
+        action="store_true",
+        help="复用已完成的 Main Parent Pool 和 Direct SFT，从 Base 评估继续",
+    )
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     stamp = args.run_name or datetime.now().strftime("%Y%m%d_%H%M%S")
-    run_name = f"{stamp}_noseed_three_gpu_queue"
+    suffix = "_noseed_three_gpu_queue"
+    run_name = stamp if stamp.endswith(suffix) else f"{stamp}{suffix}"
     data_root = ROOT / "dataset" / "parent_pools" / run_name
     pool_root = data_root / "main_pool"
     nohist_root = data_root / "no_history_pool"
@@ -195,48 +283,56 @@ def main() -> None:
         return
     run(["tmux", "kill-session", "-t", "crossover_main_2693"], check=False)
     run(["ssh", REMOTE, "hostname"])
+    configure_task_spoolers()
     sync_remote()
 
-    # 阶段1：两张远端卡建 Pool，local 卡同时做 Direct SFT。任何一张先空
-    # 出来的卡接手第三分片，避免它因固定 GPU 绑定而闲置。
-    pool_jobs: list[tuple[str, str | Path]] = []
-    for shard in (0, 1):
-        name = f"{run_name}_main_pool_{shard}"
-        marker = launch_remote(name, shard, pool_command(REMOTE_PYTHON, CONFIG.name, remote_pool_root, shard, "main", TRAIN_RANGES[shard], TEST_RANGES[shard]), f"{REMOTE_ROOT}/logs")
-        pool_jobs.append((name, marker))
-    direct_name = f"{run_name}_direct_sft"
-    direct_marker = launch_local(direct_name, 0, [PYTHON, "-B", "code/26_9_3/run_sft_input_ablation.py", "--experiment", "direct_sft", "--stage", "all", "--config", str(CONFIG), "--run-name", direct_name, "--data-dir", str(result_root / "direct_sft_data"), "--run-dir", str(result_root / "direct_sft"), "--max-steps", "430"], log_root)
-    third_name = f"{run_name}_main_pool_2"
-    _, released_location, released_gpu, _ = wait_first_success(
-        [
-            (f"{run_name}_main_pool_0", "remote", 0, pool_jobs[0][1]),
-            (f"{run_name}_main_pool_1", "remote", 1, pool_jobs[1][1]),
-            (direct_name, "local", 0, direct_marker),
-        ]
-    )
-    if released_location == "local":
-        third_marker: str | Path = launch_local(
-            third_name,
-            released_gpu,
-            pool_command(PYTHON, str(CONFIG), str(pool_root), 2, "main", TRAIN_RANGES[2], TEST_RANGES[2]),
-            log_root,
-        )
+    if args.resume_after_main:
+        if not completed_main_stage(pool_root, result_root):
+            raise RuntimeError(
+                "--resume-after-main 要求完整的 3643/608 Main Pool 和 Direct SFT 报告"
+            )
+        print(f"RESUME_SKIP stage=main run={run_name}", flush=True)
     else:
-        third_marker = launch_remote(
-            third_name,
-            released_gpu,
-            pool_command(REMOTE_PYTHON, CONFIG.name, remote_pool_root, 2, "main", TRAIN_RANGES[2], TEST_RANGES[2]),
-            f"{REMOTE_ROOT}/logs",
+        # 阶段1：两张远端卡建 Pool，local 卡同时做 Direct SFT。任何一张先空
+        # 出来的卡接手第三分片，避免它因固定 GPU 绑定而闲置。
+        pool_jobs: list[tuple[str, str | Path]] = []
+        for shard in (0, 1):
+            name = f"{run_name}_main_pool_{shard}"
+            marker = launch_remote(name, shard, pool_command(REMOTE_PYTHON, CONFIG.name, remote_pool_root, shard, "main", TRAIN_RANGES[shard], TEST_RANGES[shard]), f"{REMOTE_ROOT}/logs")
+            pool_jobs.append((name, marker))
+        direct_name = f"{run_name}_direct_sft"
+        direct_marker = launch_local(direct_name, 0, [PYTHON, "-B", "code/26_9_3/run_sft_input_ablation.py", "--experiment", "direct_sft", "--stage", "all", "--config", str(CONFIG), "--run-name", direct_name, "--data-dir", str(result_root / "direct_sft_data"), "--run-dir", str(result_root / "direct_sft"), "--max-steps", "430"], log_root)
+        third_name = f"{run_name}_main_pool_2"
+        _, released_location, released_gpu, _ = wait_first_success(
+            [
+                (f"{run_name}_main_pool_0", "remote", 0, pool_jobs[0][1]),
+                (f"{run_name}_main_pool_1", "remote", 1, pool_jobs[1][1]),
+                (direct_name, "local", 0, direct_marker),
+            ]
         )
-    wait_jobs(pool_jobs + [(direct_name, direct_marker), (third_name, third_marker)])
-    if isinstance(third_marker, str):
-        (pool_root / "shard_2").mkdir(parents=True, exist_ok=True)
-        run(["rsync", "-ah", f"{REMOTE}:{remote_pool_root}/shard_2/", str(pool_root / "shard_2") + "/"])
-    for shard in (0, 1):
-        (pool_root / f"shard_{shard}").mkdir(parents=True, exist_ok=True)
-        run(["rsync", "-ah", f"{REMOTE}:{remote_pool_root}/shard_{shard}/", str(pool_root / f"shard_{shard}") + "/"])
-    for split, expected in (("train", TRAIN_TOTAL), ("test", TEST_TOTAL)):
-        run([PYTHON, "-B", str(SCRIPT_DIR / "merge_parent_pool_shards.py"), "--shard-root", str(pool_root), "--output-dir", str(pool_root), "--split", split, "--expected", str(expected), "--expected-shards", "3"])
+        if released_location == "local":
+            third_marker: str | Path = launch_local(
+                third_name,
+                released_gpu,
+                pool_command(PYTHON, str(CONFIG), str(pool_root), 2, "main", TRAIN_RANGES[2], TEST_RANGES[2]),
+                log_root,
+            )
+        else:
+            third_marker = launch_remote(
+                third_name,
+                released_gpu,
+                pool_command(REMOTE_PYTHON, CONFIG.name, remote_pool_root, 2, "main", TRAIN_RANGES[2], TEST_RANGES[2]),
+                f"{REMOTE_ROOT}/logs",
+            )
+        wait_jobs(pool_jobs + [(direct_name, direct_marker), (third_name, third_marker)])
+        if isinstance(third_marker, str):
+            (pool_root / "shard_2").mkdir(parents=True, exist_ok=True)
+            run(["rsync", "-ah", f"{REMOTE}:{remote_pool_root}/shard_2/", str(pool_root / "shard_2") + "/"])
+        for shard in (0, 1):
+            (pool_root / f"shard_{shard}").mkdir(parents=True, exist_ok=True)
+            run(["rsync", "-ah", f"{REMOTE}:{remote_pool_root}/shard_{shard}/", str(pool_root / f"shard_{shard}") + "/"])
+        for split, expected in (("train", TRAIN_TOTAL), ("test", TEST_TOTAL)):
+            run([PYTHON, "-B", str(SCRIPT_DIR / "merge_parent_pool_shards.py"), "--shard-root", str(pool_root), "--output-dir", str(pool_root), "--split", split, "--expected", str(expected), "--expected-shards", "3"])
     run([PYTHON, "-B", str(SCRIPT_DIR / "evaluate_base_from_parent_pool.py"), "--pool", str(pool_root / "test_parent_pool.jsonl"), "--output-dir", str(result_root / "base")])
     run(["rsync", "-ah", "--delete", str(pool_root) + "/", f"{REMOTE}:{remote_pool_root}/"])
 
